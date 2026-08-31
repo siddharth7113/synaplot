@@ -13,13 +13,16 @@ synaplot render examples/vgg16.yaml -o vgg16.svg
 | `alexnet.yaml` | AlexNet | A plain feed-forward stack |
 | `vgg16.yaml` | VGG16 | Repeated convolutions drawn as one layer |
 | `unet.yaml` | U-Net | Skip connections over the top |
-| `unet_ushape.yaml` | U-Net | The U layout of the paper, using explicit positions and concatenations |
 | `fcn32s.yaml` | FCN-32s | A single upsampling step |
 | `fcn8s.yaml` | FCN-8s | Predictions from three depths summed together |
-| `hed.yaml` | HED | Side outputs branching off a backbone |
 
 These were carried over from the examples that shipped with PlotNeuralNet.
 
-`SoftmaxLoss` has not been carried over. It annotates a single box with labelled
-forward and backward arrows carrying math, and synaplot has no way to draw an
-annotation yet.
+Three of the originals are not here yet:
+
+- `HED` and the U-shaped `U-Net` need arrow routing that synaplot does not have.
+  Both branch away from a single line, and every arrow available today is either
+  straight or goes over the top of the whole drawing, so both came out as long
+  crossing diagonals.
+- `SoftmaxLoss` annotates a single box with labelled arrows carrying math, and
+  there is no way to draw an annotation yet.
