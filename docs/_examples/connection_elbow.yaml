@@ -1,0 +1,8 @@
+# An elbow turns one right angle, for a branch that leaves the main line.
+name: connection_elbow
+layers:
+  - {kind: conv, name: trunk, filters: 64, size: {width: 2, height: 30, depth: 30}}
+  - {kind: conv, name: branch, filters: 16, size: {width: 1, height: 16, depth: 16},
+     to: {layer: trunk, anchor: east, offset: {x: 6, y: -8}}}
+connections:
+  - {source: trunk, target: branch, style: elbow}

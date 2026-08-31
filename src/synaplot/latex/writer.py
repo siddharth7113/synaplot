@@ -324,7 +324,7 @@ def _caption_rows(diagram: Diagram) -> list[list[Layer]]:
         for _, members in sorted(
             rows.items(), key=lambda row: (row[0][0], -row[0][1]), reverse=True
         )
-        if any(member.caption for member in members)
+        if any(member.caption_text for member in members)
     ]
 
 
@@ -343,9 +343,9 @@ def _captions(row: list[Layer], index: int) -> str:
     return "\n".join(
         [f"\\syRowBase{{{base}}}{{{members}}}"]
         + [
-            f"\\syCaption{{{layer.name}}}{{{base}}}{{{layer.caption}}}"
+            f"\\syCaption{{{layer.name}}}{{{base}}}{{{layer.caption_text}}}"
             for layer in row
-            if layer.caption
+            if layer.caption_text
         ]
     )
 
@@ -396,17 +396,24 @@ def _label_anchor(annotation: Annotation) -> str:
     An arrow that was not offset has no such side, so its label goes beyond the
     end of the arrow instead, where it cannot cover the line.
     """
+    across = _page(annotation.reach.x, annotation.reach.z)
     if _sign(annotation.offset.y):
-        corner = (
-            _SIDE_Y.get(-_sign(annotation.offset.y), ""),
-            _SIDE_X.get(_sign(annotation.reach.x), ""),
-        )
+        corner = (_SIDE_Y.get(-_sign(annotation.offset.y), ""), _SIDE_X.get(across, ""))
     else:
-        corner = (
-            _SIDE_Y.get(-_sign(annotation.reach.y), ""),
-            _SIDE_X.get(-_sign(annotation.reach.x), ""),
-        )
+        up = _page(annotation.reach.y, annotation.reach.z)
+        corner = (_SIDE_Y.get(-up, ""), _SIDE_X.get(-across, ""))
     return " ".join(part for part in corner if part) or "center"
+
+
+def _page(along: float | str, out: float | str) -> int:
+    """Return which way a distance goes on the page, along one axis of it.
+
+    TikZ draws the depth axis towards the lower left, so a distance along it
+    counts against both axes of the page. A distance given along the page wins,
+    since that is the one the reader sees. Only the sign is used, and only to
+    choose which side of an arrow its label sits on.
+    """
+    return _sign(along) or -_sign(out)
 
 
 #: The direction each sign points in, along each axis.

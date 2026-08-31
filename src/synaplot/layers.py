@@ -443,9 +443,14 @@ class Dense(Layer):
         if self.break_after is not None:
             options["break"] = str(self.break_after)
             options["breakgap"] = str(self.break_gap)
-        if not self.caption and self.units is not None:
-            options["caption"] = str(self.units)
         return options
+
+    @property
+    def caption_text(self) -> str:
+        """Return the caption, or the unit count when no caption was written."""
+        if self.caption:
+            return self.caption
+        return "" if self.units is None else str(self.units)
 
 
 class Operator(Layer):

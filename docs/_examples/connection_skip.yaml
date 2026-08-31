@@ -1,0 +1,11 @@
+# A skip leaves the top of one layer, runs level above the drawing, and comes
+# down onto another, clearing whatever it passes.
+name: connection_skip
+layers:
+  - {kind: conv, name: conv1, filters: 64, size: {width: 2, height: 30, depth: 30}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 20, depth: 20}}
+  - {kind: conv, name: conv2, filters: 64, size: {width: 2, height: 30, depth: 30}}
+connections:
+  - {source: conv1, target: pool1}
+  - {source: pool1, target: conv2}
+  - {source: conv1, target: conv2, style: skip}

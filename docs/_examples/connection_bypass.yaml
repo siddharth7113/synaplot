@@ -1,0 +1,13 @@
+# A bypass steps out to one side, runs past what is in the way, and comes back
+# in. This is the shape of a residual path around a sublayer.
+name: connection_bypass
+flow: up
+margin: 2
+layers:
+  - {kind: block, name: input, text: Input}
+  - {kind: block, name: sublayer, text: Sublayer}
+  - {kind: operator, name: add, symbol: $+$}
+connections:
+  - {source: input, target: sublayer}
+  - {source: sublayer, target: add}
+  - {source: input, target: add, style: bypass, source_anchor: east, clearance: 6}

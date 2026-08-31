@@ -1,0 +1,15 @@
+# The anchors a box defines, each labelled with the name you use to reach it.
+name: anchors
+layers:
+  - {kind: conv, name: box, size: {width: 8, height: 40, depth: 40}}
+annotations:
+  - {layer: box, text: north, anchor: north, reach: {y: 2.5}}
+  - {layer: box, text: south, anchor: south, reach: {y: -2.5}}
+  - {layer: box, text: west, anchor: west, reach: {x: -3}}
+  - {layer: box, text: east, anchor: east, reach: {x: 3}}
+  - {layer: box, text: near, anchor: near, reach: {z: 12}}
+  - {layer: box, text: far, anchor: far, reach: {z: -15}}
+  # A corner reads outwards from the depth axis, so nearnortheast is the corner
+  # towards the reader, at the top, on the right.
+  - {layer: box, text: nearnortheast, anchor: nearnortheast, reach: {x: 5, y: 4}}
+  - {layer: box, text: farsouthwest, anchor: farsouthwest, reach: {x: -5, y: -4}}

@@ -1,0 +1,7 @@
+# A forward arrow runs between the faces the flow points at.
+name: connection_forward
+layers:
+  - {kind: conv, name: conv1, filters: 64, size: {width: 2, height: 30, depth: 30}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 24, depth: 24}}
+connections:
+  - {source: conv1, target: pool1}

@@ -95,6 +95,19 @@ class Layer(BaseModel, ABC):
         return frozenset(Anchor)
 
     @property
+    def caption_text(self) -> str:
+        """Return the text drawn under this layer.
+
+        Returns
+        -------
+        str
+            The caption, or an empty string when there is none. A layer can
+            name itself when nothing else was written, as a fully connected
+            layer does with its unit count.
+        """
+        return self.caption
+
+    @property
     def legend_opacity(self) -> float:
         """Return the opacity a legend draws this layer's swatch with.
 

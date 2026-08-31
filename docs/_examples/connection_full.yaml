@@ -1,0 +1,9 @@
+# A full connection joins every unit of one layer to every unit of the next,
+# which is how a plain neural network is drawn.
+name: connection_full
+gap: 6
+layers:
+  - {kind: dense, name: hidden, nodes: 5, units: 5}
+  - {kind: dense, name: out, nodes: 3, units: 3}
+connections:
+  - {source: hidden, target: out, style: full}

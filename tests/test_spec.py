@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -12,10 +13,19 @@ import synaplot as sp
 from synaplot import spec
 from synaplot.cli import app
 from synaplot.core.base import Layer
+from synaplot.render import render, renderers
 
 runner = CliRunner()
 
-EXAMPLES = Path(__file__).parent.parent / "examples"
+ROOT = Path(__file__).parent.parent
+EXAMPLES = ROOT / "examples"
+#: Every specification in the repository: the architectures, and the smaller
+#: drawings the documentation explains one feature with.
+SPECS = sorted(
+    path.relative_to(ROOT)
+    for directory in (EXAMPLES, ROOT / "docs" / "_examples")
+    for path in directory.glob("*.yaml")
+)
 
 DOCUMENT = """
 name: tiny
@@ -100,12 +110,26 @@ def test_every_reference_in_the_schema_resolves():
     assert referenced <= set(document["$defs"])
 
 
-@pytest.mark.parametrize("name", sorted(path.name for path in EXAMPLES.glob("*.yaml")))
+@pytest.mark.parametrize("name", [str(path) for path in SPECS])
 def test_the_examples_load_and_write_tikz(name: str):
     """Every example must stay loadable, so none can quietly rot."""
-    diagram = spec.load(EXAMPLES / name)
+    diagram = spec.load(ROOT / name)
     assert diagram.layers
     assert diagram.to_tikz()
+
+
+@pytest.mark.render
+@pytest.mark.skipif(
+    not os.environ.get("SYNAPLOT_RENDER_TESTS"),
+    reason="set SYNAPLOT_RENDER_TESTS=1 to compile diagrams",
+)
+@pytest.mark.parametrize("name", [str(path) for path in SPECS])
+def test_the_examples_compile(name: str, tmp_path: Path):
+    """Writing TikZ is not proof it draws. A wrong pic option compiles to nothing."""
+    if not renderers():
+        pytest.skip("no LaTeX engine is installed")
+    written = render(spec.load(ROOT / name), tmp_path / "out.pdf")
+    assert written.stat().st_size > 0
 
 
 def test_the_cli_renders_a_specification(tmp_path: Path):
