@@ -125,7 +125,10 @@ class Example(Directive):
             # this back into a failure where it matters.
             return [
                 self.state.document.reporter.warning(
-                    f"{self.arguments[0]} did not render: {error}",
+                    f"{self.arguments[0]} did not render. These pages draw "
+                    f"every figure they show, so the build needs a LaTeX "
+                    f"engine and a converter; run 'synaplot doctor' to see "
+                    f"what is missing. The renderer reported: {error}",
                     line=self.lineno,
                 )
             ]

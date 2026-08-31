@@ -1,0 +1,22 @@
+name: LaTeX toolchain
+description: >
+  Installs a LaTeX engine and a PDF converter, and caches the packages the
+  engine downloads. Both the rendering tests and the documentation build need
+  these, because the documentation draws every diagram it shows.
+
+runs:
+  using: composite
+  steps:
+    - name: Install tectonic and the converters
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --no-install-recommends -y poppler-utils texlive-extra-utils
+        curl -fsSL https://drop-sh.fullyjustified.net | sh
+        sudo mv tectonic /usr/local/bin/
+    - name: Cache the packages tectonic downloads
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/Tectonic
+        key: tectonic-${{ runner.os }}-${{ hashFiles('src/synaplot/latex/styles/*.sty') }}
+        restore-keys: tectonic-${{ runner.os }}-
