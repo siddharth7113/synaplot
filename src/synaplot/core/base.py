@@ -28,16 +28,11 @@ class DrawContext:
     attach : Attach or None
         Resolved position for the layer being drawn. ``None`` places it at the
         origin, which is what happens for the first layer in a diagram.
-    baseline : str
-        Name of the TikZ coordinate every caption is aligned to, which puts all
-        the captions in a drawing on one line. Empty places each caption under
-        its own layer.
     """
 
     theme: Theme
     scale: float
     attach: Attach | None
-    baseline: str = ""
 
 
 class Layer(BaseModel, ABC):
@@ -106,26 +101,6 @@ class Layer(BaseModel, ABC):
         """
         return 0.0
 
-    def floor(self, scale: float) -> float:
-        """Return how far below the axis this layer reaches.
-
-        Every caption in a drawing sits on one line, so the writer needs to
-        know which layer reaches lowest. A layer drawn as a volume reaches
-        below its own height, because the depth axis is projected downward as
-        well as across.
-
-        Parameters
-        ----------
-        scale
-            The diagram's scale.
-
-        Returns
-        -------
-        float
-            Distance from the axis to the lowest point drawn, in TikZ units.
-        """
-        return self.half_height(scale)
-
     def node_names(self) -> list[str]:
         """Return the suffixes of the separate nodes this layer draws.
 
@@ -172,8 +147,8 @@ class Layer(BaseModel, ABC):
         Returns
         -------
         dict of str to str
-            TikZ keys and values, already formatted for LaTeX. The ``name`` and
-            ``caption`` keys are added by :meth:`to_tikz`.
+            TikZ keys and values, already formatted for LaTeX. The ``name``
+            key is added by :meth:`to_tikz`.
         """
 
     def fill_colour(self, context: DrawContext, role: str) -> str:
@@ -213,10 +188,6 @@ class Layer(BaseModel, ABC):
             One TikZ ``\pic`` statement.
         """
         options = {"name": self.name, **self.pic_options(context)}
-        if self.caption:
-            options["caption"] = self.caption
-        if context.baseline:
-            options["baseline"] = context.baseline
         return draw_pic(self.pic, options, context.attach)
 
 

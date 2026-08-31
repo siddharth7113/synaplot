@@ -3,37 +3,43 @@
 % The text a layer writes around itself: its caption, and the filter count
 % under each box it draws.
 %
-% Every pic calls \syCaptionAt so that captions are placed the same way
-% wherever they come from. When the drawing sets a baseline, every caption in
-% it sits on that one line, however tall each layer happens to be. This is new
-% in synaplot: the pics it inherited from PlotNeuralNet hang each caption under
-% its own layer, which leaves the captions of a shrinking stack of feature maps
-% climbing the page.
+% A caption is written by the diagram rather than by the pic it belongs to,
+% because where it goes depends on the whole row: every caption in a row hangs
+% from the lowest point any layer of that row reached. PlotNeuralNet places
+% each caption under its own layer, which leaves the captions of a shrinking
+% stack of feature maps at different heights.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \makeatletter
-% \syCaptionAt{<text width in pt>}
+\newlength{\syCaptionDrop}
+\setlength{\syCaptionDrop}{4mm}
+\newlength{\syCaptionWidth}
+\setlength{\syCaptionWidth}{3cm}
+
+% \syRowBase{<coordinate to name>}{<comma-separated layer names>}
 %
-% The layer name, the caption and the baseline are read from \sy@name,
-% \sy@caption and \sy@baseline, which every pic stores its options in. Passing
-% them as arguments instead would mean expanding the caption to test it for
-% emptiness, and a caption holds arbitrary LaTeX.
-%
-% \sy@baseline names a coordinate drawn at picture scope rather than giving a
-% length, because a length written here would be measured from the layer the
-% pic sits at: a pic body is expanded with the pic's own shift in force.
-\newcommand{\syCaptionAt}[1]{%
-    \ifx\sy@caption\@empty\else
-        \ifx\sy@baseline\@empty
-            \def\sy@cap@at{(\sy@name-south)}%
-            \def\sy@cap@drop{-10pt}%
+% Names a coordinate on the lowest point that any of those layers drew, size
+% labels included. It is read from the drawing rather than worked out in
+% advance, because how far a label reaches depends on how wide its text sets,
+% which only TeX knows.
+\newcommand{\syRowBase}[2]{%
+    \gdef\sy@low{}%
+    \foreach \sy@n in {#2}{%
+        \pgfextracty{\pgf@ya}{\pgfpointanchor{syExtent-\sy@n}{south}}%
+        \ifx\sy@low\@empty
+            \xdef\sy@low{\the\pgf@ya}%
         \else
-            \def\sy@cap@at{(\sy@name-south |- \sy@baseline)}%
-            \def\sy@cap@drop{0pt}%
-        \fi
-        \node[anchor=north, text width=#1pt, align=center, inner sep=0pt,
-              yshift=\sy@cap@drop] at \sy@cap@at
-             {\textcolor{black}{\bf \sy@caption}};
-    \fi}
+            \ifdim\pgf@ya<\sy@low\relax \xdef\sy@low{\the\pgf@ya}\fi
+        \fi}%
+    \coordinate (#1) at (0,\sy@low);}
+
+% \syCaption{<layer name>}{<row baseline coordinate>}{<text>}
+%
+% Writes one caption under one layer, hanging from the line its row shares, so
+% that a row of captions reads as a line however tall each layer is drawn.
+\newcommand{\syCaption}[3]{%
+    \node[anchor=north, yshift=-\syCaptionDrop, text width=\syCaptionWidth,
+          align=center, inner sep=0pt]
+         at (syExtent-#1.center |- #2) {\textcolor{black}{\bf #3}};}
 
 % \syFilterLabel{<left coordinate>}{<right coordinate>}{<box width in cm>}
 %

@@ -47,9 +47,14 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
-- The captions of a row of layers sit on the same line. Each caption used to
-  sit under its own layer, which left them at different heights. A drawing with
-  a second row of layers below the first gives that row a line of its own.
+- The captions of a row of layers sit on the same line, read off the lowest
+  point any layer of that row drew. Each caption used to sit under its own
+  layer, which left them at different heights. A drawing with a second row of
+  layers below the first gives that row a line of its own.
+- `\syCaptionDrop` and `\syCaptionWidth` set how far below a row its captions
+  sit and how wide they set. A pic no longer draws its own caption, so the
+  `caption` key is gone from `Box`, `RightBandedBox`, `Ball`, `NodeLayer`, and
+  `FlatBlock`.
 - A filter label wider than the box it belongs to is turned on its side, so
   that the labels of two boxes drawn side by side read as two numbers rather
   than one. PlotNeuralNet writes `6464` where a layer has 64 filters twice.

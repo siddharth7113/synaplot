@@ -94,10 +94,10 @@ def test_a_skip_runs_level():
 
 def test_every_caption_in_a_row_sits_on_one_line():
     tikz = diagram_to_tikz(small_diagram())
-    assert tikz.startswith("\\coordinate (syBaseline1) at (0,")
-    # The deepest layer decides where the line goes, and every layer of the row
-    # is aligned to it rather than to itself.
-    assert tikz.count("baseline=syBaseline1") == 5
+    # Every layer of the row is measured, captioned or not, because any of them
+    # could be the one that reaches lowest.
+    assert "\\syRowBase{syBaseline1}{conv1,pool1,conv2,out,add1}" in tikz
+    assert tikz.count("\\syCaption{") == 2
 
 
 def test_a_second_row_gets_a_line_of_its_own():
@@ -110,8 +110,8 @@ def test_a_second_row_gets_a_line_of_its_own():
         ),
     )
     tikz = diagram_to_tikz(diagram)
-    assert "baseline=syBaseline1" in tikz
-    assert "baseline=syBaseline2" in tikz
+    assert "\\syRowBase{syBaseline1}{conv1}" in tikz
+    assert "\\syRowBase{syBaseline2}{side1}" in tikz
 
 
 def test_a_drawing_with_no_captions_needs_no_baseline():

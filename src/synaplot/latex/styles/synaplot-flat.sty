@@ -67,7 +67,6 @@
         \coordinate (\sy@name-southeast) at ( \sy@noderadius,-\sy@nodetop-\sy@noderadius);
         \coordinate (\sy@name-southwest) at (-\sy@noderadius,-\sy@nodetop-\sy@noderadius);
 
-        \syCaptionAt{80}
     },
     /synaplot/nodelayer/.search also={/tikz},
     /synaplot/nodelayer/.cd,
@@ -77,10 +76,8 @@
     scale/.store       in=\sy@scale,
     fill/.store        in=\sy@fill,
     opacity/.store     in=\sy@opacity,
-    caption/.store     in=\sy@caption,
     break/.store       in=\sy@break,
     breakgap/.store    in=\sy@breakgap,
-    baseline/.store    in=\sy@baseline,
     name/.store        in=\sy@name,
     count=4,
     radius=1.6,
@@ -88,10 +85,8 @@
     scale=0.2,
     fill={rgb:blue,5;red,2.5;white,5},
     opacity=0.7,
-    caption=,
     break=,
     breakgap=3,
-    baseline=,
     name=,
 }
 
@@ -117,8 +112,6 @@
         \coordinate (\sy@name-southeast) at ( \sy@blockw/2,-\sy@blockh/2);
         \coordinate (\sy@name-southwest) at (-\sy@blockw/2,-\sy@blockh/2);
 
-        \pgfmathsetmacro{\sy@capwidth}{\sy@blockw*72.27/2.54}
-        \syCaptionAt{\sy@capwidth}
     },
     /synaplot/flatblock/.search also={/tikz},
     /synaplot/flatblock/.cd,
@@ -128,8 +121,6 @@
     fill/.store        in=\sy@fill,
     opacity/.store     in=\sy@opacity,
     text/.store        in=\sy@text,
-    caption/.store     in=\sy@caption,
-    baseline/.store    in=\sy@baseline,
     corner/.store      in=\sy@corner,
     name/.store        in=\sy@name,
     width=40,
@@ -138,8 +129,6 @@
     fill={rgb:yellow,5;red,2.5;white,5},
     opacity=0.7,
     text=,
-    caption=,
-    baseline=,
     corner=3,
     name=,
 }
@@ -163,7 +152,6 @@
         \coordinate (\sy@name-north)  at (0, \sy@opradius);
         \coordinate (\sy@name-south)  at (0,-\sy@opradius);
 
-        \syCaptionAt{80}
     },
     /synaplot/flatoperator/.search also={/tikz},
     /synaplot/flatoperator/.cd,
@@ -172,16 +160,12 @@
     fill/.store        in=\sy@fill,
     opacity/.store     in=\sy@opacity,
     symbol/.store      in=\sy@symbol,
-    caption/.store     in=\sy@caption,
-    baseline/.store    in=\sy@baseline,
     name/.store        in=\sy@name,
     radius=3,
     scale=0.2,
     fill={rgb:blue,5;green,15},
     opacity=0.7,
     symbol=$+$,
-    caption=,
-    baseline=,
     name=,
 }
 \makeatother

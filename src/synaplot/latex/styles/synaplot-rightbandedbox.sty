@@ -93,10 +93,6 @@
         \coordinate (\sy@name-south)  at (\sy@LastEastx/2,-\sy@y/2,0);
         \coordinate (\sy@name-anchor) at (\sy@LastEastx/2, 0,0) ;
 
-        % A caption on a thin layer would be squeezed into a column a few
-        % characters wide and hyphenated down the page, so the width has a floor.
-        \pgfmathsetmacro{\sy@capwidth}{max(15*\sy@LastEastx/\sy@scale, 80)}
-        \syCaptionAt{\sy@capwidth}
 
         \coordinate (\sy@name-near) at (\sy@LastEastx/2,0,\sy@z/2);
         \coordinate (\sy@name-far)  at (\sy@LastEastx/2,0,-\sy@z/2);
@@ -130,8 +126,6 @@
     xlabel/.store       in=\sy@boxlabels,
     ylabel/.store       in=\sy@ylabel,
     zlabel/.store       in=\sy@zlabel,
-    caption/.store      in=\sy@caption,
-    baseline/.store     in=\sy@baseline,
     name/.store         in=\sy@name,
     fill/.store         in=\sy@fill,
     bandfill/.store     in=\sy@bandfill,
@@ -148,8 +142,6 @@
     xlabel={{"","","","","","","","","",""}},
     ylabel=,
     zlabel=,
-    caption=,
-    baseline=,
     name=,
 }
 \makeatother

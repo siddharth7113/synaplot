@@ -1,5 +1,4 @@
-\coordinate (syBaseline1) at (0,-6.64);
-
+\begin{scope}[local bounding box=syExtent-conv1]
 \pic[shift={(0,0,0)}] at (0,0,0)
     {Box={
         name=conv1,
@@ -9,11 +8,11 @@
         width=1,
         depth=40.0,
         xlabel={{"64",""}},
-        zlabel=512,
-        caption=conv1,
-        baseline=syBaseline1
+        zlabel=512
     }};
+\end{scope}
 
+\begin{scope}[local bounding box=syExtent-pool1]
 \pic[shift={(1.6,0,0)}] at (conv1-east)
     {Box={
         name=pool1,
@@ -21,10 +20,11 @@
         opacity=0.5,
         height=32.0,
         width=1,
-        depth=32.0,
-        baseline=syBaseline1
+        depth=32.0
     }};
+\end{scope}
 
+\begin{scope}[local bounding box=syExtent-conv2]
 \pic[shift={(1.6,0,0)}] at (pool1-east)
     {RightBandedBox={
         name=conv2,
@@ -36,10 +36,11 @@
         xlabel={{"128","128","128"}},
         zlabel=256,
         bandfill=\syColorConvRelu,
-        bandopacity=0.6,
-        baseline=syBaseline1
+        bandopacity=0.6
     }};
+\end{scope}
 
+\begin{scope}[local bounding box=syExtent-out]
 \pic[shift={(1.6,0,0)}] at (conv2-east)
     {Box={
         name=out,
@@ -48,20 +49,20 @@
         height=3.0,
         width=1.5,
         depth=25.0,
-        zlabel=10,
-        caption=softmax,
-        baseline=syBaseline1
+        zlabel=10
     }};
+\end{scope}
 
+\begin{scope}[local bounding box=syExtent-add1]
 \pic[shift={(1.6,0,0)}] at (out-east)
     {Ball={
         name=add1,
         fill=\syColorSum,
         opacity=0.6,
         radius=2.5,
-        logo=$+$,
-        baseline=syBaseline1
+        logo=$+$
     }};
+\end{scope}
 
 \draw [syConnection] (conv1-east) -- node {\syArrow} (pool1-west);
 
@@ -75,3 +76,7 @@
 \coordinate (conv1-out-roof-out) at (out-north |- 0,5);
 \draw [syCopyConnection] (conv1-north) -- (conv1-out-roof-conv1)
     -- node[near end] {\syCopyArrow} (conv1-out-roof-out) -- (out-north);
+
+\syRowBase{syBaseline1}{conv1,pool1,conv2,out,add1}
+\syCaption{conv1}{syBaseline1}{conv1}
+\syCaption{out}{syBaseline1}{softmax}

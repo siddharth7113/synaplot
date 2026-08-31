@@ -12,13 +12,8 @@ from typing import ClassVar, Literal
 from pydantic import Field
 
 from synaplot.core.base import DrawContext, Layer, label_array
-from synaplot.core.geometry import DEPTH_SLANT, Anchor, Size
+from synaplot.core.geometry import Anchor, Size
 from synaplot.core.theme import color_macro
-
-#: Room a box leaves below itself for the size labels along its bottom edge, in
-#: centimetres. Enough for a filter label turned on its side, which is how a box
-#: too narrow for its label upright writes it.
-LABEL_ROOM = 0.7
 
 
 class BoxLayer(Layer):
@@ -45,17 +40,6 @@ class BoxLayer(Layer):
     def depth_extent(self, scale: float) -> float:
         """Return how deep the box is drawn."""
         return self.size.depth * scale
-
-    def floor(self, scale: float) -> float:
-        """Return how far below the axis the box reaches.
-
-        A box reaches below its own height twice over: the depth axis is
-        projected downward, and the size labels are written below the bottom
-        edge. Label text is the same size whatever the drawing is scaled to, so
-        the room it needs is a fixed length rather than a scaled one.
-        """
-        depth = DEPTH_SLANT * self.depth_extent(scale) / 2
-        return self.half_height(scale) + depth + LABEL_ROOM
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options common to every box layer."""
@@ -211,10 +195,6 @@ class Ball(Layer):
     def depth_extent(self, scale: float) -> float:
         """Return how deep the sphere is drawn."""
         return 2 * self.radius * scale
-
-    def floor(self, scale: float) -> float:
-        """Return the radius. A sphere is as deep as it is tall, but round."""
-        return self.half_height(scale)
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this sphere."""

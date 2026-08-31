@@ -287,41 +287,51 @@ def _format(value: float) -> str:
     return str(int(value)) if value == int(value) else repr(round(value, 4))
 
 
-#: How far below the lowest point of a row its captions sit, in centimetres.
-#: Enough to clear the size labels along the bottom edge of a box.
-CAPTION_DROP = 0.4
+def _caption_rows(diagram: Diagram) -> list[list[Layer]]:
+    """Return the layers of each row that has a caption on it.
 
-
-def _baselines(diagram: Diagram, scale: float) -> tuple[dict[str, str], list[str]]:
-    """Return the line each caption sits on, and the TikZ that defines them.
-
-    Layers drawn at the same height share one line, so their captions read as a
-    row. A drawing with a second row of layers below the first gets a second
-    line, rather than dropping those captions onto the first and printing them
-    over the ones already there.
+    Layers drawn at the same height are a row, and the captions of a row sit on
+    one line so that they read as a line. A row with nothing captioned needs no
+    line and is left out.
 
     Returns
     -------
-    tuple of (dict of str to str, list of str)
-        The coordinate each captioned layer aligns to, keyed by layer name, and
-        the statements to write before the layers. A row with nothing captioned
-        appears in neither.
+    list of list of Layer
+        The members of each captioned row, topmost row first. Every member is
+        listed, captioned or not, because an uncaptioned layer can still be the
+        one that reaches lowest and so decides where the line goes.
     """
     heights = diagram.axis_heights()
     rows: dict[float, list[Layer]] = {}
     for layer in diagram.layers:
         rows.setdefault(round(heights[layer.name], 6), []).append(layer)
+    return [
+        members
+        for _, members in sorted(rows.items(), reverse=True)
+        if any(member.caption for member in members)
+    ]
 
-    aligned: dict[str, str] = {}
-    setup: list[str] = []
-    for height, members in sorted(rows.items(), reverse=True):
-        if not any(member.caption for member in members):
-            continue
-        name = f"syBaseline{len(setup) + 1}"
-        floor = height - max(member.floor(scale) for member in members)
-        setup.append(f"\\coordinate ({name}) at (0,{_format(floor - CAPTION_DROP)});")
-        aligned.update(dict.fromkeys((member.name for member in members), name))
-    return aligned, setup
+
+def _captions(row: list[Layer], index: int) -> str:
+    """Return the TikZ that writes one row's captions.
+
+    Parameters
+    ----------
+    row
+        The layers of the row, as :func:`_caption_rows` returns them.
+    index
+        Which captioned row this is, used to name its baseline.
+    """
+    base = f"syBaseline{index}"
+    members = ",".join(layer.name for layer in row)
+    return "\n".join(
+        [f"\\syRowBase{{{base}}}{{{members}}}"]
+        + [
+            f"\\syCaption{{{layer.name}}}{{{base}}}{{{layer.caption}}}"
+            for layer in row
+            if layer.caption
+        ]
+    )
 
 
 def diagram_to_tikz(diagram: Diagram) -> str:
@@ -338,21 +348,24 @@ def diagram_to_tikz(diagram: Diagram) -> str:
         TikZ statements, without the surrounding environment.
     """
     scale = diagram.scale.value
-    aligned, setup = _baselines(diagram, scale)
-    blocks = list(setup)
-    blocks += [
-        layer.to_tikz(
-            DrawContext(
-                theme=diagram.theme,
-                scale=scale,
-                attach=attach,
-                baseline=aligned.get(layer.name, ""),
-            )
+    rows = _caption_rows(diagram)
+    # A captioned row hangs its captions from the lowest point any of its layers
+    # reached, so those layers are drawn inside a scope that records it.
+    measured = {layer.name for row in rows for layer in row}
+    blocks = []
+    for layer, attach in diagram.placements():
+        drawing = layer.to_tikz(
+            DrawContext(theme=diagram.theme, scale=scale, attach=attach)
         )
-        for layer, attach in diagram.placements()
-    ]
+        if layer.name in measured:
+            drawing = (
+                f"\\begin{{scope}}[local bounding box=syExtent-{layer.name}]\n"
+                f"{drawing}\n\\end{{scope}}"
+            )
+        blocks.append(drawing)
     roof = max((layer.half_height(scale) for layer in diagram.layers), default=0.0)
     blocks += [connection_to_tikz(c, roof, diagram) for c in diagram.connections]
+    blocks += [_captions(row, index) for index, row in enumerate(rows, start=1)]
     return "\n\n".join(blocks)
 
 
