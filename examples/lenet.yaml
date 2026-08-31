@@ -8,9 +8,9 @@ layers:
   - {kind: conv, name: conv2, caption: conv2, filters: 16, spatial: 10,
      size: {width: 3, height: 32, depth: 32}}
   - {kind: pool, name: pool2, size: {width: 1, height: 20, depth: 20}}
-  - {kind: conv_relu, name: fc1, caption: fc1, filters: 120, spatial: 1,
+  - {kind: fully_connected, name: fc1, caption: fc1, units: 120,
      size: {width: 3, height: 3, depth: 25}}
-  - {kind: conv_relu, name: fc2, caption: fc2, filters: 84, spatial: 1,
+  - {kind: fully_connected, name: fc2, caption: fc2, units: 84,
      size: {width: 3, height: 3, depth: 25}}
   - {kind: softmax, name: out, caption: softmax, classes: 10}
 connections:

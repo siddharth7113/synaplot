@@ -4,12 +4,21 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.12"
+  # Every diagram in the documentation is rendered while the page that shows it
+  # is built, so the build needs a LaTeX engine and a converter. pdftocairo
+  # comes from poppler; tectonic is installed under jobs, because it is one
+  # binary rather than a package.
+  apt_packages:
+    - poppler-utils
   jobs:
     install:
       - asdf plugin add uv
       - asdf install uv latest
       - asdf global uv latest
       - uv sync --group docs
+    pre_build:
+      - curl -fsSL https://drop-sh.fullyjustified.net | sh
+      - mv tectonic .venv/bin/tectonic
     build:
       html:
         - uv run sphinx-build -W --keep-going -b html docs $READTHEDOCS_OUTPUT/html

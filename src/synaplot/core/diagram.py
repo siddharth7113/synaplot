@@ -522,8 +522,8 @@ class Diagram(BaseModel):
         """Work out where each layer goes.
 
         A layer that names its own position keeps it. A layer that does not
-        follows :attr:`Diagram.flow` from the previous layer, separated by
-        :attr:`Diagram.gap`. The first such layer sits at the origin.
+        follows ``flow`` from the previous layer, separated by ``gap``. The
+        first such layer sits at the origin.
 
         Yields
         ------

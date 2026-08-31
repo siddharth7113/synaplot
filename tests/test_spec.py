@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 from pathlib import Path
 
 import pytest
@@ -147,6 +148,12 @@ def test_the_cli_reports_a_bad_specification(tmp_path: Path):
     result = runner.invoke(app, ["render", str(source), "-o", str(tmp_path / "x.tex")])
     assert result.exit_code == 1
     assert "unknown layer kind" in result.stderr
+
+
+def test_the_python_and_yaml_lenet_draw_the_same_thing():
+    """The documentation shows them as two spellings of one diagram."""
+    built = runpy.run_path(str(EXAMPLES / "lenet.py"))["diagram"]
+    assert built.to_tikz() == spec.load(EXAMPLES / "lenet.yaml").to_tikz()
 
 
 def test_the_cli_converts_python_to_a_specification(tmp_path: Path):

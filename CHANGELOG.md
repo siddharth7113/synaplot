@@ -59,6 +59,13 @@ PlotNeuralNet do not work with synaplot.
   of layer the diagram draws and the colour it is drawn in. It sits just clear
   of the corner it names, so it covers nothing. List the entries yourself to
   say something else.
+- Documentation: a landing page, a quickstart, a gallery of every architecture
+  with the file that drew it, a user guide covering layers, anchors,
+  connections, annotations, themes, specifications and writing a layer of your
+  own, a page for readers coming from PlotNeuralNet, and a generated API
+  reference. Every diagram in the documentation is rendered from a file in the
+  repository while the page that shows it is built, and the table of layer
+  kinds is read off the code, so neither can go stale.
 - Thirteen worked examples under `examples/`, carried over from the ones that
   shipped with PlotNeuralNet. `hed.yaml`, `unet_ushape.yaml` and
   `softmax_loss.yaml` are the three that needed drawing synaplot could not do
@@ -78,6 +85,10 @@ PlotNeuralNet do not work with synaplot.
   and LaTeX reports the mistake as `No shape named ... is known`, several
   hundred lines into its own log. Naming a layer that is not in the diagram is
   refused the same way, which a specification could do silently.
+- A layer given several filter counts draws a box for each of them. The number
+  of boxes came from `size.width` and the number of labels from `filters`, so a
+  layer with four filter counts and one width drew a single box and dropped
+  three labels.
 - The theme's band colours are `conv_band` and `fc_band`, not `conv_relu` and
   `fc_relu`. They colour the band down the right of a layer, which stands for
   the activation; the layer itself is filled with `conv` or `fc`. The old names

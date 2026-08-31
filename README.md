@@ -35,11 +35,17 @@ source, from Python or from the command line.
 ```python
 import synaplot as sp
 
-diagram = sp.Diagram(name="lenet")
+diagram = sp.Diagram(name="tiny")
 diagram.add(
     sp.Conv(name="conv1", filters=64, spatial=512, caption="conv1"),
     sp.Pool(name="pool1"),
-    sp.ConvRelu(name="conv2", filters=[128, 128, 128], spatial=256),
+    sp.ConvRelu(
+        name="conv2",
+        filters=[128, 128, 128],
+        spatial=256,
+        size=sp.Size(width=[3, 3, 3], height=30, depth=30),
+        caption="conv2",
+    ),
     sp.Softmax(name="out", classes=10, caption="softmax"),
 )
 diagram.connect("conv1", "pool1")
@@ -47,13 +53,14 @@ diagram.connect("pool1", "conv2")
 diagram.connect("conv2", "out")
 diagram.connect("conv1", "out", style="skip")
 
-diagram.save("lenet.svg")
+diagram.save("tiny.svg")
 ```
 
-Or from a file that builds a diagram:
+synaplot also renders a diagram written as a file. `examples/` holds a worked
+file for each common architecture:
 
 ```console
-synaplot render examples/lenet.py -o lenet.svg
+synaplot render examples/lenet.yaml -o lenet.svg
 ```
 
 The format comes from the suffix: `.svg`, `.png`, `.pdf`, or `.tex`.
@@ -81,16 +88,16 @@ document asks for.
 
 ## Putting a diagram in a paper
 
-`to_tex` writes a document that carries its own style definitions, so it
-compiles from any directory and pastes into Overleaf unchanged:
+`to_tex` writes a document that carries its own style definitions. It compiles
+from any directory, and you can paste it into Overleaf as it is:
 
 ```python
 print(diagram.to_tex())  # a document on its own
 print(diagram.to_tex(standalone=False))  # a fragment for a paper you have
 ```
 
-The style definitions use private macro names, so loading them does not
-redefine `\caption`, `\fill`, or anything else in the document around them.
+Every macro the style definitions create is prefixed `\sy@`, so they stay
+separate from the commands your document defines.
 
 ## Documentation
 
@@ -101,14 +108,14 @@ The documentation is at [synaplot.readthedocs.io](https://synaplot.readthedocs.i
 synaplot is a rewrite of
 [PlotNeuralNet](https://github.com/HarisIqbal88/PlotNeuralNet) by Haris Iqbal,
 MIT licensed. The TikZ code that draws every box, banded box, and ball comes
-from that project. It ships in
+from that project. It is included in
 [src/synaplot/latex/styles/](src/synaplot/latex/styles/), and each file records
 what changed.
 
 Scripts written for PlotNeuralNet do not work with synaplot. The Python
 interface, the rendering pipeline, and the command-line tool are new.
 
-If you use synaplot in academic work, please cite both projects. See
+If you use synaplot in academic work, cite both projects. See
 [CITATION.cff](CITATION.cff); PlotNeuralNet's DOI is
 [10.5281/zenodo.2526396](https://doi.org/10.5281/zenodo.2526396).
 

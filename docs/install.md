@@ -60,7 +60,8 @@ brew install dvisvgm poppler
 
 ## Adding another program
 
-Subclass `Renderer` or `Converter` and set `name` to the program to run.
+Subclass {class}`~synaplot.render.Renderer` or
+{class}`~synaplot.render.Converter` and set `name` to the program to run.
 synaplot finds it by walking the base class, so there is nothing to register.
 
 ```python

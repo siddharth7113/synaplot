@@ -40,6 +40,8 @@ intersphinx_mapping = {
 }
 
 myst_enable_extensions = ["colon_fence", "deflist"]
+# Link to a heading on another page by its text.
+myst_heading_anchors = 3
 
 html_theme = "pydata_sphinx_theme"
 html_title = "synaplot"
@@ -58,3 +60,19 @@ html_theme_options = {
 # Warn about every cross-reference that cannot be resolved. The docs build runs
 # with -W, so a broken reference fails CI.
 nitpicky = True
+
+# pydantic writes its field constraints into the annotations, and autodoc reads
+# them as if they were types to link to. There is nothing to link to, and the
+# constraint is already in the field's description.
+nitpick_ignore_regex = [
+    ("py:class", r"annotated_types\..*"),
+    ("py:class", r"(ge|le|gt|lt|min_length|max_length)=.*"),
+    ("py:class", r"PydanticUndefined"),
+    ("py:class", r"SerializeAsAny"),
+    # A numpydoc return type such as "dict of str to type of Layer" describes a
+    # mapping in words. Napoleon tries to link the words after "of".
+    ("py:class", r".+ to .+"),
+    # The Python domain resolves a bare class name against the module it is
+    # written in, and pathlib.Path is only findable by its full name.
+    ("py:class", r"Path"),
+]

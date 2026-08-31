@@ -7,10 +7,8 @@ import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+from typing import ClassVar
 
 
 class Format(str, Enum):

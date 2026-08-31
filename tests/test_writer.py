@@ -97,6 +97,16 @@ def test_every_filter_is_drawn():
     tikz = diagram_to_tikz(diagram)
     for value in ("64", "128", "256", "512"):
         assert f'"{value}"' in tikz
+    # A box pic draws one box per entry in its width and reads the labels by
+    # index, so four labels need four boxes or three of them go nowhere.
+    assert "width={1,1,1,1}" in tikz
+
+
+def test_a_width_given_per_box_is_left_alone():
+    diagram = sp.Diagram().add(
+        sp.Conv(name="c", filters=[64, 128], size=sp.Size(width=[2, 3]))
+    )
+    assert "width={2,3}" in diagram_to_tikz(diagram)
 
 
 def test_a_skip_runs_level():

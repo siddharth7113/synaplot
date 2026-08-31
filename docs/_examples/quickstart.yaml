@@ -1,0 +1,13 @@
+# A small convolutional network, one layer per line.
+name: tiny
+layers:
+  - {kind: conv_relu, name: conv1, caption: conv1, filters: 64, spatial: 224,
+     size: {width: 2, height: 40, depth: 40}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 32, depth: 32}}
+  - {kind: conv_relu, name: conv2, caption: conv2, filters: 128, spatial: 112,
+     size: {width: 3, height: 32, depth: 32}}
+  - {kind: softmax, name: out, caption: softmax, classes: 10}
+connections:
+  - {source: conv1, target: pool1}
+  - {source: pool1, target: conv2}
+  - {source: conv2, target: out}

@@ -61,7 +61,8 @@ class FilteredBox(BoxLayer):
     filters
         Number of output channels, written along the bottom edge. A list draws
         one box per entry, which is how a run of convolutions is shown as a
-        single layer.
+        single layer. Give ``size.width`` a list to draw those boxes different
+        widths; a single width is used for all of them.
     spatial
         Size of the feature map, written along the depth edge. Free text, so
         ``'H/2'`` works as well as a number.
@@ -80,6 +81,14 @@ class FilteredBox(BoxLayer):
         options["xlabel"] = label_array(
             "" if value is None else str(value) for value in filters
         )
+        # One box per filter count. The box pic draws as many boxes as its
+        # width has entries and reads the labels by index, so a layer given
+        # four filter counts and one width would draw a single box and drop
+        # three of the labels without saying so.
+        if len(filters) > 1 and self.size.boxes == 1:
+            options["width"] = (
+                "{" + ",".join([self.size.width_to_tikz()] * len(filters)) + "}"
+            )
         if self.spatial is not None:
             options["zlabel"] = str(self.spatial)
         return options
@@ -203,12 +212,17 @@ class Unpool(Resampling):
 
 
 class Softmax(BoxLayer):
-    """A softmax output, drawn as a thin box.
+    """A softmax output, drawn as a long thin bar.
+
+    The default shape is a bar rather than a box, because a softmax over
+    classes is a vector: there is no spatial extent left. Give it the height
+    and depth of the layer before it to draw an output that keeps one, such as
+    the per-pixel map a segmentation network ends with.
 
     Parameters
     ----------
     classes
-        Number of classes, written along the depth edge.
+        Number of classes, written along the long edge.
 
     """
 

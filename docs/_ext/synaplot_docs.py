@@ -16,12 +16,14 @@ Two directives are provided:
 from __future__ import annotations
 
 import runpy
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
 
+import synaplot
 from synaplot.core.base import Layer
 from synaplot.core.diagram import Diagram
 from synaplot.render import ToolchainError
@@ -52,16 +54,30 @@ def load(path: Path) -> Diagram:
     """
     if path.suffix == ".py":
         namespace = runpy.run_path(str(path))
-        return next(
-            value for value in namespace.values() if isinstance(value, Diagram)
-        )
+        return next(value for value in namespace.values() if isinstance(value, Diagram))
     from synaplot import spec
 
     return spec.load(path)
 
 
+@cache
+def library_changed() -> float:
+    """Return when synaplot itself was last changed.
+
+    A rendered diagram goes stale when the specification changes and equally
+    when the code that draws it changes, so both count.
+
+    Returns
+    -------
+    float
+        The most recent modification time in the package.
+    """
+    package = Path(synaplot.__file__).parent
+    return max(path.stat().st_mtime for path in package.rglob("*") if path.is_file())
+
+
 def draw(source: Path) -> Path:
-    """Render a diagram to SVG, reusing the last render while the source is older.
+    """Render a diagram to SVG, reusing the last render while it is current.
 
     Parameters
     ----------
@@ -75,8 +91,10 @@ def draw(source: Path) -> Path:
     """
     GALLERY.mkdir(exist_ok=True)
     target = GALLERY / f"{source.stem}.svg"
-    if target.exists() and target.stat().st_mtime >= source.stat().st_mtime:
-        return target
+    if target.exists():
+        drawn = target.stat().st_mtime
+        if drawn >= source.stat().st_mtime and drawn >= library_changed():
+            return target
     return load(source).save(target)
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel
@@ -13,7 +14,6 @@ from synaplot.core.theme import Theme, color_macro
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from pathlib import Path
 
 
 @dataclass(frozen=True)

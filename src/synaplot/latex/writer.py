@@ -45,7 +45,7 @@ ARROW_STYLES = r"""
 
 @lru_cache(maxsize=1)
 def style_source() -> str:
-    """Return the TikZ style definitions that ship with the package.
+    """Return the TikZ style definitions included with the package.
 
     The definitions are read from the package and returned as text so they can
     be written straight into a document. A document that carries them needs no

@@ -15,7 +15,7 @@ name a color, as in ``'teal'``, or mix several, as in ``'rgb:blue,5;green,15'``.
 class Theme(BaseModel):
     """The color used for each kind of layer.
 
-    Every field except ``name`` is a :data:`Color`. Build a variant by copying
+    Every field except ``name`` is a colour expression. Build a variant by copying
     an existing theme and overriding the roles you want to change.
 
     Parameters
