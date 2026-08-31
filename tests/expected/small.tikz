@@ -1,3 +1,5 @@
+\coordinate (syBaseline) at (0,-6.34);
+
 \pic[shift={(0,0,0)}] at (0,0,0)
     {Box={
         name=conv1,
@@ -8,7 +10,8 @@
         depth=40.0,
         xlabel={{"64",""}},
         zlabel=512,
-        caption=conv1
+        caption=conv1,
+        baseline=syBaseline
     }};
 
 \pic[shift={(1.6,0,0)}] at (conv1-east)
@@ -18,7 +21,8 @@
         opacity=0.5,
         height=32.0,
         width=1,
-        depth=32.0
+        depth=32.0,
+        baseline=syBaseline
     }};
 
 \pic[shift={(1.6,0,0)}] at (pool1-east)
@@ -32,7 +36,8 @@
         xlabel={{"128","128","128"}},
         zlabel=256,
         bandfill=\syColorConvRelu,
-        bandopacity=0.6
+        bandopacity=0.6,
+        baseline=syBaseline
     }};
 
 \pic[shift={(1.6,0,0)}] at (conv2-east)
@@ -44,7 +49,8 @@
         width=1.5,
         depth=25.0,
         zlabel=10,
-        caption=softmax
+        caption=softmax,
+        baseline=syBaseline
     }};
 
 \pic[shift={(1.6,0,0)}] at (out-east)
@@ -53,7 +59,8 @@
         fill=\syColorSum,
         opacity=0.6,
         radius=2.5,
-        logo=$+$
+        logo=$+$,
+        baseline=syBaseline
     }};
 
 \draw [syConnection] (conv1-east) -- node {\syArrow} (pool1-west);
@@ -67,4 +74,4 @@
 \coordinate (conv1-out-roof-conv1) at (conv1-north |- 0,5);
 \coordinate (conv1-out-roof-out) at (out-north |- 0,5);
 \draw [syCopyConnection] (conv1-north) -- (conv1-out-roof-conv1)
-    -- node {\syCopyArrow} (conv1-out-roof-out) -- (out-north);
+    -- node[near end] {\syCopyArrow} (conv1-out-roof-out) -- (out-north);

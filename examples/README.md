@@ -16,7 +16,7 @@ synaplot render examples/vgg16.yaml -o vgg16.svg
 | `fcn32s.yaml` | FCN-32s | A single upsampling step |
 | `fcn8s.yaml` | FCN-8s | Predictions from three depths summed together |
 | `mlp.yaml` | Fully connected network | Layers drawn as columns of units, joined unit to unit |
-| `transformer.yaml` | Transformer encoder | Flat blocks stacked upward, with residual paths around each sublayer |
+| `transformer.yaml` | Transformer encoder | Flat blocks stacked upward, with each residual path added back in at a circle |
 
 These were carried over from the examples that shipped with PlotNeuralNet.
 

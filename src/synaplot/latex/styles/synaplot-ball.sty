@@ -26,8 +26,7 @@
         \coordinate (\sy@name-north)  at ( 0                 , \sy@radiusscaled   , 0) ;
         \coordinate (\sy@name-south)  at ( 0                 , -\sy@radiusscaled  , 0) ;
 
-        \path (\sy@name-south) + (0,-20pt) coordinate (sy@captionnode)
-        edge ["\textcolor{black}{\bf \sy@caption}"'] (sy@captionnode); %Ball caption
+        \syCaptionAt{80}
 
     },
     /synaplot/ball/.search also={/tikz},
@@ -35,6 +34,7 @@
     radius/.store       in=\sy@radius,
     scale/.store        in=\sy@scale,
     caption/.store      in=\sy@caption,
+    baseline/.store     in=\sy@baseline,
     name/.store         in=\sy@name,
     fill/.store         in=\sy@fill,
     logo/.store         in=\sy@logo,
@@ -45,6 +45,7 @@
     scale=0.2,
     radius=0.5,
     caption=,
+    baseline=,
     name=,
 }
 \makeatother

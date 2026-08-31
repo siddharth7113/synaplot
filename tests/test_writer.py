@@ -10,7 +10,11 @@ from pathlib import Path
 import pytest
 
 import synaplot as sp
-from synaplot.latex.writer import diagram_to_tikz, style_source
+from synaplot.latex.writer import (
+    connection_to_tikz,
+    diagram_to_tikz,
+    style_source,
+)
 
 EXPECTED = Path(__file__).parent / "expected"
 
@@ -45,7 +49,9 @@ def test_tikz_matches_the_saved_output():
     you meant to make, then read the diff before committing it.
     """
     saved = EXPECTED / "small.tikz"
-    produced = diagram_to_tikz(small_diagram())
+    # The saved copy ends in a newline, as a text file does, and as the
+    # end-of-file-fixer hook would make it anyway.
+    produced = diagram_to_tikz(small_diagram()) + "\n"
     if os.environ.get("SYNAPLOT_UPDATE_EXPECTED"):
         saved.parent.mkdir(exist_ok=True)
         saved.write_text(produced, encoding="utf-8")
@@ -84,6 +90,60 @@ def test_a_skip_runs_level():
         if "|- 0," in line
     }
     assert len(levels) == 1
+
+
+def test_every_caption_sits_on_one_line():
+    tikz = diagram_to_tikz(small_diagram())
+    assert tikz.startswith("\\coordinate (syBaseline) at (0,")
+    # The deepest layer decides where the line goes, and every captioned layer
+    # is aligned to it rather than to itself.
+    assert tikz.count("baseline=syBaseline") == 5
+
+
+def test_a_drawing_with_no_captions_needs_no_baseline():
+    diagram = sp.Diagram(name="quiet").add(sp.Conv(name="conv1"), sp.Pool(name="p1"))
+    assert "baseline" not in diagram_to_tikz(diagram)
+
+
+def test_an_arrow_into_a_flat_layer_ends_in_an_arrowhead():
+    diagram = sp.Diagram(name="flat").add(
+        sp.Block(name="a", text="a"),
+        sp.Operator(name="b", to=sp.Attach(layer="a", anchor=sp.Anchor.NORTH)),
+        sp.Conv(name="c"),
+    )
+    diagram.connect("a", "b")
+    diagram.connect("b", "c")
+    into_flat, into_volume = (
+        connection_to_tikz(c, 0.0, diagram) for c in diagram.connections
+    )
+    assert "syHead" in into_flat and "syArrow" not in into_flat
+    assert "syArrow" in into_volume and "syHead" not in into_volume
+
+
+def test_the_lines_of_a_full_connection_go_behind_the_layers():
+    diagram = sp.Diagram(name="mesh").add(
+        sp.Dense(name="a", nodes=2), sp.Dense(name="b", nodes=2)
+    )
+    diagram.connect("a", "b", style="full")
+    tikz = diagram_to_tikz(diagram)
+    assert "\\begin{pgfonlayer}{syBackground}" in tikz
+    assert tikz.count("syEdge") == 4
+
+
+def test_two_bypasses_can_leave_one_layer_in_different_lanes():
+    diagram = sp.Diagram(name="lanes").add(
+        sp.Block(name="a", text="a"),
+        sp.Block(name="b", text="b", to=sp.Attach(layer="a", anchor=sp.Anchor.NORTH)),
+        sp.Block(name="c", text="c", to=sp.Attach(layer="b", anchor=sp.Anchor.NORTH)),
+    )
+    diagram.connect("a", "b", style="bypass", source_anchor="east", clearance=2)
+    diagram.connect("b", "c", style="bypass", source_anchor="northeast", clearance=3.4)
+    first, second = (connection_to_tikz(c, 0.0, diagram) for c in diagram.connections)
+    assert "(a-east) -- ++(2,0)" in first
+    # The second leaves a corner, so the two do not share the run out, and it
+    # comes back in on the side that corner names.
+    assert "(b-northeast) -- ++(3.4,0)" in second
+    assert "(c-east)" in second
 
 
 def test_the_document_carries_its_own_styles():

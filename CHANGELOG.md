@@ -34,7 +34,8 @@ PlotNeuralNet do not work with synaplot.
 - Flat shapes, for architectures that are not stacks of feature maps. `Dense`
   draws a layer as a column of units, the way a plain neural network is shown,
   and `Block` draws a rounded box holding a line of text, the way the parts of
-  a transformer or a recurrent cell are shown.
+  a transformer or a recurrent cell are shown. `Operator` draws a small circle
+  holding a symbol, for the point where a residual path is added back.
 - Three more connection styles. `full` joins every unit of one layer to every
   unit of the next. `elbow` turns one right angle, for a branch leaving the
   main line. `bypass` steps out to one side, runs past whatever is in the way,
@@ -45,6 +46,17 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
+- Every caption in a drawing sits on the same line. Each one used to sit under
+  its own layer, which left them at different heights.
+- An arrow into a flat layer ends in an arrowhead. An arrow into a layer drawn
+  as a volume still carries one partway along, where the box cannot hide it.
+- The lines of a `full` connection pass behind the units they join rather than
+  across them.
+- A `bypass` can leave from a corner as well as a side, so two of them can
+  leave the same layer without overlapping.
+- `Dense` leaves a gap at its break and draws the ellipsis to scale with its
+  circles. The ellipsis used to be text at document size in a gap too small
+  for it.
 - Style macros use a private `\sy@` namespace. Loading a style no longer
   overwrites `\caption`, `\fill`, `\scale`, `\name`, `\depth`, or `\opacity`.
 - The depth label is centered on the depth edge instead of the corner.

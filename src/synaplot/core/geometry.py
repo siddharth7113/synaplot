@@ -6,6 +6,14 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+DEPTH_SLANT = 0.385
+"""How far across and down the page TikZ draws one unit of depth.
+
+TikZ projects the depth axis onto ``(-0.385, -0.385)`` by default, so a layer
+drawn as a volume reaches further to each side, and further down, than its
+width and height alone account for.
+"""
+
 
 class Anchor(str, Enum):
     """A named point on a drawn layer that other layers can attach to.

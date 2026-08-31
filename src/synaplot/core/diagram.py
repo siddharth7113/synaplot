@@ -8,20 +8,12 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, field_validator
 
 from synaplot.core.base import Layer
-from synaplot.core.geometry import Anchor, Attach, Offset, Scale
+from synaplot.core.geometry import DEPTH_SLANT, Anchor, Attach, Offset, Scale
 from synaplot.core.theme import Theme
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
-
-
-DEPTH_SLANT = 0.385
-"""How far across the page TikZ draws one unit of depth.
-
-TikZ projects the depth axis onto ``(-0.385, -0.385)`` by default, so a layer
-takes up horizontal room in proportion to how deep it is drawn.
-"""
 
 
 class ConnectionStyle(str, Enum):

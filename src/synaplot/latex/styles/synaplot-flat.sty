@@ -5,6 +5,8 @@
 % NodeLayer draws a column of circles, the way a plain neural network is
 % usually shown. FlatBlock draws a rounded rectangle holding a line of text,
 % the way the parts of a transformer or a recurrent cell are usually shown.
+% FlatOperator draws a small circle holding a symbol, which is how a drawing
+% marks the point where two paths are added together.
 %
 % These are new in synaplot. The 3D pics it inherited from PlotNeuralNet draw
 % feature maps as volumes, which suits a convolutional network and nothing else.
@@ -18,22 +20,41 @@
 
         \pgfmathsetmacro{\sy@noderadius}{\sy@radius*\sy@scale}
         \pgfmathsetmacro{\sy@nodestep}{\sy@spacing*\sy@scale}
+        % A break holds the drawn circles apart to leave room for the ellipsis
+        % that stands in for the units the layer does not draw. \sy@breakat is
+        % 0 when there is no break, and no circle is numbered 0, so the test
+        % below never fires.
+        \ifx\sy@break\@empty
+            \pgfmathsetmacro{\sy@breakat}{0}
+            \pgfmathsetmacro{\sy@nodegap}{0}
+        \else
+            \pgfmathsetmacro{\sy@breakat}{\sy@break}
+            \pgfmathsetmacro{\sy@nodegap}{\sy@breakgap*\sy@scale}
+        \fi
         % The column is centred on the axis, so a row of layers lines up
         % however many nodes each one has.
-        \pgfmathsetmacro{\sy@nodetop}{(\sy@count-1)*\sy@nodestep/2}
+        \pgfmathsetmacro{\sy@nodetop}{((\sy@count-1)*\sy@nodestep+\sy@nodegap)/2}
 
         \foreach \sy@n in {1,...,\sy@count} {
-            \pgfmathsetmacro{\sy@nodey}{\sy@nodetop-(\sy@n-1)*\sy@nodestep}
+            \pgfmathsetmacro{\sy@nodey}{%
+                \sy@nodetop-(\sy@n-1)*\sy@nodestep
+                -(\sy@n>\sy@breakat ? \sy@nodegap : 0)}
             \node[circle, draw, line width=0.3mm,
                   fill=\sy@fill, fill opacity=\sy@opacity, text opacity=1,
                   minimum size=2*\sy@noderadius cm, inner sep=0pt]
                  (\sy@name-\sy@n) at (0,\sy@nodey) {};
         }
 
-        % A break stands in for the nodes a large layer does not draw.
+        % Three dots, drawn rather than typeset, so that they scale with the
+        % circles instead of with the document's font size.
         \ifx\sy@break\@empty\else
-            \pgfmathsetmacro{\sy@breaky}{\sy@nodetop-(\sy@break-0.5)*\sy@nodestep}
-            \node[inner sep=0pt] at (0,\sy@breaky) {\vdots};
+            \pgfmathsetmacro{\sy@dotr}{0.16*\sy@noderadius}
+            \pgfmathsetmacro{\sy@dotstep}{0.55*\sy@noderadius}
+            \pgfmathsetmacro{\sy@breaky}{%
+                \sy@nodetop-(\sy@breakat-0.5)*\sy@nodestep-\sy@nodegap/2}
+            \foreach \sy@d in {-1,0,1} {
+                \fill[black] (0,\sy@breaky+\sy@d*\sy@dotstep) circle (\sy@dotr);
+            }
         \fi
 
         \coordinate (\sy@name-anchor) at (0,0);
@@ -46,8 +67,7 @@
         \coordinate (\sy@name-southeast) at ( \sy@noderadius,-\sy@nodetop-\sy@noderadius);
         \coordinate (\sy@name-southwest) at (-\sy@noderadius,-\sy@nodetop-\sy@noderadius);
 
-        \node[below=8pt, text centered] at (\sy@name-south)
-            {\textcolor{black}{\bf \sy@caption}};
+        \syCaptionAt{80}
     },
     /synaplot/nodelayer/.search also={/tikz},
     /synaplot/nodelayer/.cd,
@@ -59,6 +79,8 @@
     opacity/.store     in=\sy@opacity,
     caption/.store     in=\sy@caption,
     break/.store       in=\sy@break,
+    breakgap/.store    in=\sy@breakgap,
+    baseline/.store    in=\sy@baseline,
     name/.store        in=\sy@name,
     count=4,
     radius=1.6,
@@ -68,6 +90,8 @@
     opacity=0.7,
     caption=,
     break=,
+    breakgap=3,
+    baseline=,
     name=,
 }
 
@@ -93,10 +117,8 @@
         \coordinate (\sy@name-southeast) at ( \sy@blockw/2,-\sy@blockh/2);
         \coordinate (\sy@name-southwest) at (-\sy@blockw/2,-\sy@blockh/2);
 
-        \ifx\sy@caption\@empty\else
-            \node[below=8pt, text centered] at (\sy@name-south)
-                {\textcolor{black}{\bf \sy@caption}};
-        \fi
+        \pgfmathsetmacro{\sy@capwidth}{\sy@blockw*72.27/2.54}
+        \syCaptionAt{\sy@capwidth}
     },
     /synaplot/flatblock/.search also={/tikz},
     /synaplot/flatblock/.cd,
@@ -107,6 +129,7 @@
     opacity/.store     in=\sy@opacity,
     text/.store        in=\sy@text,
     caption/.store     in=\sy@caption,
+    baseline/.store    in=\sy@baseline,
     corner/.store      in=\sy@corner,
     name/.store        in=\sy@name,
     width=40,
@@ -116,7 +139,49 @@
     opacity=0.7,
     text=,
     caption=,
+    baseline=,
     corner=3,
+    name=,
+}
+
+\tikzset{
+    FlatOperator/.pic={\tikzset{/synaplot/flatoperator/.cd,#1}
+
+        \pgfmathsetmacro{\sy@opradius}{\sy@radius*\sy@scale}
+
+        \node[circle, draw, line width=0.3mm,
+              fill=\sy@fill, fill opacity=\sy@opacity,
+              minimum size=2*\sy@opradius cm, inner sep=0pt]
+             (\sy@name-node) at (0,0) {};
+        % The symbol is set on a node of its own, so that scaling it to the
+        % circle does not scale the circle with it.
+        \node[scale=3.5*\sy@opradius] at (0,0) {\sy@symbol};
+
+        \coordinate (\sy@name-anchor) at (0,0);
+        \coordinate (\sy@name-west)   at (-\sy@opradius,0);
+        \coordinate (\sy@name-east)   at ( \sy@opradius,0);
+        \coordinate (\sy@name-north)  at (0, \sy@opradius);
+        \coordinate (\sy@name-south)  at (0,-\sy@opradius);
+
+        \syCaptionAt{80}
+    },
+    /synaplot/flatoperator/.search also={/tikz},
+    /synaplot/flatoperator/.cd,
+    radius/.store      in=\sy@radius,
+    scale/.store       in=\sy@scale,
+    fill/.store        in=\sy@fill,
+    opacity/.store     in=\sy@opacity,
+    symbol/.store      in=\sy@symbol,
+    caption/.store     in=\sy@caption,
+    baseline/.store    in=\sy@baseline,
+    name/.store        in=\sy@name,
+    radius=3,
+    scale=0.2,
+    fill={rgb:blue,5;green,15},
+    opacity=0.7,
+    symbol=$+$,
+    caption=,
+    baseline=,
     name=,
 }
 \makeatother

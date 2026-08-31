@@ -16,9 +16,13 @@ if TYPE_CHECKING:
 
 # Libraries the drawing needs: quotes for the labels along a box edge, 3d for
 # the plane an input image is drawn on, arrows.meta for the arrowheads, and
-# positioning for the anchors.
+# positioning for the anchors. The background layer holds the lines a fully
+# connected layer draws, so they pass behind the circles they join instead of
+# across them.
 TIKZ_SETUP = r"""
 \usetikzlibrary{quotes,arrows.meta,positioning,3d}
+\pgfdeclarelayer{syBackground}
+\pgfsetlayers{syBackground,main}
 """.strip()
 
 # Definitions the connections rely on: \syArrow and \syCopyArrow draw the
@@ -38,6 +42,7 @@ ARROW_STYLES = r"""
         ultra thick, draw=EDGE, opacity=0.7,
         every node/.style={sloped,allow upside down}},
     syEdge/.style={draw=EDGE, opacity=0.35, line width=0.2mm},
+    syHead/.style={-{Stealth[length=3.5mm,width=3mm]}},
 }
 """.strip()
 
@@ -119,16 +124,15 @@ def connection_to_tikz(
     if connection.style is ConnectionStyle.FULL:
         return _full_connection(connection, diagram)
 
+    line, head = _arrowhead(connection, diagram)
+
     if connection.style is ConnectionStyle.FORWARD:
         start = (connection.source_anchor or Anchor.EAST).value
         end = (connection.target_anchor or Anchor.WEST).value
-        return (
-            f"\\draw [syConnection] ({source}-{start}) "
-            f"-- node {{\\syArrow}} ({target}-{end});"
-        )
+        return f"\\draw [{line}] ({source}-{start}) --{head} ({target}-{end});"
 
     if connection.style is ConnectionStyle.BYPASS:
-        return _bypass(connection)
+        return _bypass(connection, line, head)
 
     if connection.style is ConnectionStyle.ELBOW:
         # TikZ turns the corner itself: -| goes across and then down, and |-
@@ -136,10 +140,7 @@ def connection_to_tikz(
         start = (connection.source_anchor or Anchor.EAST).value
         end = (connection.target_anchor or Anchor.WEST).value
         corner = "-|" if connection.bend is Bend.ACROSS_THEN_DOWN else "|-"
-        return (
-            f"\\draw [syConnection] ({source}-{start}) "
-            f"{corner} node[near end] {{\\syArrow}} ({target}-{end});"
-        )
+        return f"\\draw [{line}] ({source}-{start}) {corner}{head} ({target}-{end});"
 
     # Both ends rise to the same height, so the run between them is level. Using
     # each layer's own height instead would slant the run whenever two layers of
@@ -147,14 +148,38 @@ def connection_to_tikz(
     level = _format(roof * connection.height)
     top_source = f"{source}-{target}-roof-{source}"
     top_target = f"{source}-{target}-roof-{target}"
+    line = line.replace("syConnection", "syCopyConnection")
     return "\n".join(
         [
             f"\\coordinate ({top_source}) at ({source}-north |- 0,{level});",
             f"\\coordinate ({top_target}) at ({target}-north |- 0,{level});",
-            f"\\draw [syCopyConnection] ({source}-north) -- ({top_source})",
-            f"    -- node {{\\syCopyArrow}} ({top_target}) -- ({target}-north);",
+            f"\\draw [{line}] ({source}-north) -- ({top_source})",
+            f"    --{head.replace('syArrow', 'syCopyArrow')} ({top_target})"
+            f" -- ({target}-north);",
         ]
     )
+
+
+def _arrowhead(connection: Connection, diagram: Diagram | None) -> tuple[str, str]:
+    """Return the line style and the arrowhead node for one arrow.
+
+    An arrow into a flat layer ends in an arrowhead at the anchor. An arrow
+    into a layer drawn as a volume carries its arrowhead partway along the
+    line, because the anchor of a volume sits inside the shape, where an
+    arrowhead is hidden. That is what PlotNeuralNet does, and it puts the head
+    in the gap between two boxes, where there is room to see it.
+
+    Returns
+    -------
+    tuple of (str, str)
+        The style to draw the line with, and the node that carries the
+        arrowhead. The node is empty when the head sits at the end of the line.
+    """
+    into_flat = diagram is not None and diagram[connection.target].flat
+    if into_flat:
+        return "syConnection,syHead", ""
+    placement = "" if connection.style is ConnectionStyle.FORWARD else "[near end]"
+    return "syConnection", f" node{placement} {{\\syArrow}}"
 
 
 #: Which way a bypass steps out, per anchor it leaves from.
@@ -163,24 +188,41 @@ _STEP_OUT = {
     Anchor.WEST: (-1, 0),
     Anchor.NORTH: (0, 1),
     Anchor.SOUTH: (0, -1),
+    # A corner steps out to the side it names. Two residual arrows can then
+    # leave the same layer, one from the corner and one from the side, without
+    # the second running back down the line the first came in on.
+    Anchor.NORTHEAST: (1, 0),
+    Anchor.SOUTHEAST: (1, 0),
+    Anchor.NORTHWEST: (-1, 0),
+    Anchor.SOUTHWEST: (-1, 0),
+}
+
+#: Which side a bypass comes back in on, per direction it stepped out in.
+_SIDE = {
+    (1, 0): Anchor.EAST,
+    (-1, 0): Anchor.WEST,
+    (0, 1): Anchor.NORTH,
+    (0, -1): Anchor.SOUTH,
 }
 
 
-def _bypass(connection: Connection) -> str:
+def _bypass(connection: Connection, line: str, head: str) -> str:
     """Return an arrow that steps aside, runs past, and comes back in.
 
     Raises
     ------
     ValueError
         If the arrow leaves from an anchor with no clear direction to step out
-        in, such as a corner.
+        in, such as the centre of the layer.
     """
     start = connection.source_anchor or Anchor.EAST
-    end = connection.target_anchor or start
     if start not in _STEP_OUT:
         sides = ", ".join(anchor.value for anchor in _STEP_OUT)
         raise ValueError(f"a bypass must leave from one of {sides}, not {start.value}")
     across, up = _STEP_OUT[start]
+    # An arrow that left from a corner comes back in on the side that corner
+    # names, because the corner only says where to leave from.
+    end = connection.target_anchor or _SIDE[across, up]
     step = (
         f"({_format(across * connection.clearance)},"
         f"{_format(up * connection.clearance)})"
@@ -189,8 +231,8 @@ def _bypass(connection: Connection) -> str:
     # meets the target square on rather than at a slant.
     corner = "|-" if across else "-|"
     return (
-        f"\\draw [syConnection] ({connection.source}-{start.value}) -- ++{step}\n"
-        f"    {corner} node[near end] {{\\syArrow}} ({connection.target}-{end.value});"
+        f"\\draw [{line}] ({connection.source}-{start.value}) -- ++{step}\n"
+        f"    {corner}{head} ({connection.target}-{end.value});"
     )
 
 
@@ -214,11 +256,12 @@ def _full_connection(connection: Connection, diagram: Diagram | None) -> str:
                 f"{name!r} is not drawn as separate nodes, so it cannot take a "
                 f"full connection; use a dense layer at both ends"
             )
-    return "\n".join(
-        f"\\draw [syEdge] ({source}-{start}) -- ({target}-{end});"
+    edges = "\n".join(
+        f"    \\draw [syEdge] ({source}-{start}) -- ({target}-{end});"
         for start in starts
         for end in ends
     )
+    return f"\\begin{{pgfonlayer}}{{syBackground}}\n{edges}\n\\end{{pgfonlayer}}"
 
 
 def _format(value: float) -> str:
@@ -237,6 +280,35 @@ def _format(value: float) -> str:
     return str(int(value)) if value == int(value) else repr(round(value, 4))
 
 
+#: How far below the lowest point of a drawing its captions sit, in
+#: centimetres. Enough to clear the size labels along the bottom edge of a box.
+CAPTION_DROP = 0.4
+
+#: Name of the coordinate every caption is aligned to.
+BASELINE = "syBaseline"
+
+
+def _baseline(diagram: Diagram, scale: float) -> tuple[str, list[str]]:
+    """Return the coordinate captions align to, and the TikZ that defines it.
+
+    Aligning every caption to one coordinate puts them on a single line, so
+    they read as a row whatever height each layer is drawn at. A drawing with
+    no captions needs no coordinate and gets none, and each pic then places its
+    caption under its own layer.
+
+    Returns
+    -------
+    tuple of (str, list of str)
+        The name of the coordinate, empty when nothing is captioned, and the
+        statements to write before the layers.
+    """
+    if not any(layer.caption for layer in diagram.layers):
+        return "", []
+    floor = max((layer.floor(scale) for layer in diagram.layers), default=0.0)
+    level = _format(-(floor + CAPTION_DROP))
+    return BASELINE, [f"\\coordinate ({BASELINE}) at (0,{level});"]
+
+
 def diagram_to_tikz(diagram: Diagram) -> str:
     """Return the body of the ``tikzpicture`` that draws a diagram.
 
@@ -251,8 +323,14 @@ def diagram_to_tikz(diagram: Diagram) -> str:
         TikZ statements, without the surrounding environment.
     """
     scale = diagram.scale.value
-    blocks = [
-        layer.to_tikz(DrawContext(theme=diagram.theme, scale=scale, attach=attach))
+    baseline, setup = _baseline(diagram, scale)
+    blocks = list(setup)
+    blocks += [
+        layer.to_tikz(
+            DrawContext(
+                theme=diagram.theme, scale=scale, attach=attach, baseline=baseline
+            )
+        )
         for layer, attach in diagram.placements()
     ]
     roof = max((layer.half_height(scale) for layer in diagram.layers), default=0.0)

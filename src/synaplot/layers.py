@@ -12,8 +12,12 @@ from typing import ClassVar, Literal
 from pydantic import Field
 
 from synaplot.core.base import DrawContext, Layer, label_array
-from synaplot.core.geometry import Anchor, Size
+from synaplot.core.geometry import DEPTH_SLANT, Anchor, Size
 from synaplot.core.theme import color_macro
+
+#: Room a box leaves below itself for the size labels along its bottom edge,
+#: in centimetres.
+LABEL_ROOM = 0.4
 
 
 class BoxLayer(Layer):
@@ -40,6 +44,17 @@ class BoxLayer(Layer):
     def depth_extent(self, scale: float) -> float:
         """Return how deep the box is drawn."""
         return self.size.depth * scale
+
+    def floor(self, scale: float) -> float:
+        """Return how far below the axis the box reaches.
+
+        A box reaches below its own height twice over: the depth axis is
+        projected downward, and the size labels are written below the bottom
+        edge. Label text is the same size whatever the drawing is scaled to, so
+        the room it needs is a fixed length rather than a scaled one.
+        """
+        depth = DEPTH_SLANT * self.depth_extent(scale) / 2
+        return self.half_height(scale) + depth + LABEL_ROOM
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options common to every box layer."""
@@ -196,6 +211,10 @@ class Ball(Layer):
         """Return how deep the sphere is drawn."""
         return 2 * self.radius * scale
 
+    def floor(self, scale: float) -> float:
+        """Return the radius. A sphere is as deep as it is tall, but round."""
+        return self.half_height(scale)
+
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this sphere."""
         return {
@@ -236,6 +255,7 @@ class Input(Layer):
     """
 
     pic: ClassVar[str] = ""
+    flat: ClassVar[bool] = True
 
     kind: Literal["input"] = "input"
 
@@ -283,6 +303,9 @@ class Dense(Layer):
     break_after
         Draw a vertical ellipsis after this circle, standing for the units not
         drawn. ``None`` draws none.
+    break_gap
+        Extra room to leave for that ellipsis, in TikZ units, on top of the
+        usual distance between two circles.
     radius
         Radius of each circle, in TikZ units.
     spacing
@@ -294,10 +317,12 @@ class Dense(Layer):
     kind: Literal["dense"] = "dense"
     role: ClassVar[str] = "fc"
     pic: ClassVar[str] = "NodeLayer"
+    flat: ClassVar[bool] = True
 
     units: int | None = None
     nodes: int = Field(default=4, ge=1)
     break_after: int | None = None
+    break_gap: float = 3.0
     radius: float = 1.6
     spacing: float = 5.0
     opacity: float = Field(default=0.7, ge=0, le=1)
@@ -325,7 +350,8 @@ class Dense(Layer):
 
     def half_height(self, scale: float) -> float:
         """Return half the height of the column, including the outer circles."""
-        return ((self.nodes - 1) * self.spacing / 2 + self.radius) * scale
+        gap = self.break_gap if self.break_after is not None else 0.0
+        return (((self.nodes - 1) * self.spacing + gap) / 2 + self.radius) * scale
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this column."""
@@ -338,9 +364,58 @@ class Dense(Layer):
         }
         if self.break_after is not None:
             options["break"] = str(self.break_after)
+            options["breakgap"] = str(self.break_gap)
         if not self.caption and self.units is not None:
             options["caption"] = str(self.units)
         return options
+
+
+class Operator(Layer):
+    r"""An operation on two paths, drawn as a small circle holding a symbol.
+
+    This is how a drawing marks the point where a residual path rejoins the
+    one it left, and it is drawn flat on the page so that it sits among
+    :class:`Block` layers rather than among feature maps. For the same
+    operation drawn as a shaded sphere beside 3D feature maps, use :class:`Sum`
+    or :class:`Concat`.
+
+    Parameters
+    ----------
+    symbol
+        What to draw inside the circle. Read as LaTeX, so ``r"$\otimes$"``
+        draws a multiplication sign.
+    radius
+        Radius of the circle, in TikZ units.
+    opacity
+        How opaque the fill is, from 0 to 1.
+    """
+
+    kind: Literal["operator"] = "operator"
+    role: ClassVar[str] = "sum"
+    pic: ClassVar[str] = "FlatOperator"
+    flat: ClassVar[bool] = True
+
+    symbol: str = "$+$"
+    radius: float = 3.0
+    opacity: float = Field(default=0.7, ge=0, le=1)
+
+    @property
+    def anchors(self) -> frozenset[Anchor]:
+        """Return the five anchors a circle defines."""
+        return Anchor.ball_anchors()
+
+    def half_height(self, scale: float) -> float:
+        """Return the radius, which is half the drawn height of a circle."""
+        return self.radius * scale
+
+    def pic_options(self, context: DrawContext) -> dict[str, str]:
+        """Return the TikZ options for this operator."""
+        return {
+            "fill": self.fill_colour(context, self.role),
+            "opacity": str(self.opacity),
+            "radius": str(self.radius),
+            "symbol": self.symbol,
+        }
 
 
 class Block(Layer):
@@ -365,6 +440,7 @@ class Block(Layer):
     kind: Literal["block"] = "block"
     role: ClassVar[str] = "conv"
     pic: ClassVar[str] = "FlatBlock"
+    flat: ClassVar[bool] = True
 
     text: str = ""
     width: float = 40.0
@@ -403,6 +479,7 @@ __all__ = [
     "Dense",
     "FilteredBox",
     "Input",
+    "Operator",
     "Pool",
     "Resampling",
     "Softmax",

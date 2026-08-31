@@ -1,8 +1,9 @@
 # A transformer encoder block, after Vaswani et al. (2017).
 #
 # Drawn as flat blocks stacked upward rather than as feature maps in a row,
-# which is how attention architectures are usually shown. The residual arrows
-# leave each sublayer, pass it, and rejoin at the Add & Norm above it.
+# which is how attention architectures are usually shown. Each residual path
+# leaves the trunk below a sublayer, passes it, and is added back in at the
+# circle above it, which is the point the two paths meet.
 #
 # Render with: synaplot render examples/transformer.yaml -o transformer.svg
 name: transformer
@@ -11,33 +12,39 @@ layers:
      fill: "rgb:blue,5;red,2.5;white,5"}
   - {kind: block, name: pos, text: Positional Encoding, width: 46, height: 11,
      fill: "rgb:blue,5;red,2.5;white,5",
-     to: {layer: embed, anchor: north, offset: {y: 1.6}}}
+     to: {layer: embed, anchor: north, offset: {y: 1.7}}}
 
   - {kind: block, name: attention, text: Multi-Head Attention, width: 46, height: 13,
      fill: "rgb:yellow,5;red,2.5;white,5",
-     to: {layer: pos, anchor: north, offset: {y: 1.8}}}
-  - {kind: block, name: norm1, text: Add \& Norm, width: 46, height: 9,
+     to: {layer: pos, anchor: north, offset: {y: 1.9}}}
+  - {kind: operator, name: add1,
+     to: {layer: attention, anchor: north, offset: {y: 1.2}}}
+  - {kind: block, name: norm1, text: Layer Norm, width: 46, height: 9,
      fill: "rgb:red,1;black,0.3",
-     to: {layer: attention, anchor: north, offset: {y: 1.6}}}
+     to: {layer: add1, anchor: north, offset: {y: 1.5}}}
 
   - {kind: block, name: feedforward, text: Feed Forward, width: 46, height: 13,
      fill: "rgb:yellow,5;red,2.5;white,5",
-     to: {layer: norm1, anchor: north, offset: {y: 1.8}}}
-  - {kind: block, name: norm2, text: Add \& Norm, width: 46, height: 9,
+     to: {layer: norm1, anchor: north, offset: {y: 1.9}}}
+  - {kind: operator, name: add2,
+     to: {layer: feedforward, anchor: north, offset: {y: 1.2}}}
+  - {kind: block, name: norm2, text: Layer Norm, width: 46, height: 9,
      fill: "rgb:red,1;black,0.3",
-     to: {layer: feedforward, anchor: north, offset: {y: 1.6}}}
+     to: {layer: add2, anchor: north, offset: {y: 1.5}}}
 
   - {kind: block, name: head, text: Linear + Softmax, width: 46, height: 11,
      fill: "rgb:magenta,5;black,7",
-     to: {layer: norm2, anchor: north, offset: {y: 1.8}}}
+     to: {layer: norm2, anchor: north, offset: {y: 1.7}}}
 connections:
   - {source: embed, target: pos, source_anchor: north, target_anchor: south}
   - {source: pos, target: attention, source_anchor: north, target_anchor: south}
-  - {source: attention, target: norm1, source_anchor: north, target_anchor: south}
+  - {source: attention, target: add1, source_anchor: north, target_anchor: south}
+  - {source: add1, target: norm1, source_anchor: north, target_anchor: south}
   - {source: norm1, target: feedforward, source_anchor: north, target_anchor: south}
-  - {source: feedforward, target: norm2, source_anchor: north, target_anchor: south}
+  - {source: feedforward, target: add2, source_anchor: north, target_anchor: south}
+  - {source: add2, target: norm2, source_anchor: north, target_anchor: south}
   - {source: norm2, target: head, source_anchor: north, target_anchor: south}
-  # Residual paths: out to the right, past the sublayer, back in at the
-  # Add & Norm above it.
-  - {source: pos, target: norm1, style: bypass, source_anchor: east, clearance: 2}
-  - {source: norm1, target: norm2, style: bypass, source_anchor: east, clearance: 2}
+  # Residual paths: out to the right, past the sublayer, and back in at the
+  # circle that adds them to what the sublayer produced.
+  - {source: pos, target: add1, style: bypass, source_anchor: east, clearance: 2}
+  - {source: norm1, target: add2, style: bypass, source_anchor: east, clearance: 2}

@@ -1,0 +1,36 @@
+\ProvidesPackage{synaplot-caption}[2026/08/31 synaplot captions]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% One caption, drawn under one layer.
+%
+% Every pic calls \syCaptionAt so that captions are placed the same way
+% wherever they come from. When the drawing sets a baseline, every caption in
+% it sits on that one line, however tall each layer happens to be. This is new
+% in synaplot: the pics it inherited from PlotNeuralNet hang each caption under
+% its own layer, which leaves the captions of a shrinking stack of feature maps
+% climbing the page.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeatletter
+% \syCaptionAt{<text width in pt>}
+%
+% The layer name, the caption and the baseline are read from \sy@name,
+% \sy@caption and \sy@baseline, which every pic stores its options in. Passing
+% them as arguments instead would mean expanding the caption to test it for
+% emptiness, and a caption holds arbitrary LaTeX.
+%
+% \sy@baseline names a coordinate drawn at picture scope rather than giving a
+% length, because a length written here would be measured from the layer the
+% pic sits at: a pic body is expanded with the pic's own shift in force.
+\newcommand{\syCaptionAt}[1]{%
+    \ifx\sy@caption\@empty\else
+        \ifx\sy@baseline\@empty
+            \def\sy@cap@at{(\sy@name-south)}%
+            \def\sy@cap@drop{-10pt}%
+        \else
+            \def\sy@cap@at{(\sy@name-south |- \sy@baseline)}%
+            \def\sy@cap@drop{0pt}%
+        \fi
+        \node[anchor=north, text width=#1pt, align=center, inner sep=0pt,
+              yshift=\sy@cap@drop] at \sy@cap@at
+             {\textcolor{black}{\bf \sy@caption}};
+    \fi}
+\makeatother

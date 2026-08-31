@@ -28,11 +28,16 @@ class DrawContext:
     attach : Attach or None
         Resolved position for the layer being drawn. ``None`` places it at the
         origin, which is what happens for the first layer in a diagram.
+    baseline : str
+        Name of the TikZ coordinate every caption is aligned to, which puts all
+        the captions in a drawing on one line. Empty places each caption under
+        its own layer.
     """
 
     theme: Theme
     scale: float
     attach: Attach | None
+    baseline: str = ""
 
 
 class Layer(BaseModel, ABC):
@@ -61,9 +66,16 @@ class Layer(BaseModel, ABC):
     ----------
     pic : str
         Name of the TikZ pic this class draws with, such as ``'Box'``.
+    flat : bool
+        Whether the layer is drawn flat on the page, with its anchors on the
+        outline. An arrow into a flat layer ends in an arrowhead at the anchor.
+        An arrow into a layer drawn as a volume carries its arrowhead partway
+        along the line instead, because the anchor of a volume sits inside the
+        shape, where an arrowhead is hidden.
     """
 
     pic: ClassVar[str] = ""
+    flat: ClassVar[bool] = False
 
     name: str
     to: Attach | None = None
@@ -93,6 +105,26 @@ class Layer(BaseModel, ABC):
             Distance from the axis to the top of the layer, in TikZ units.
         """
         return 0.0
+
+    def floor(self, scale: float) -> float:
+        """Return how far below the axis this layer reaches.
+
+        Every caption in a drawing sits on one line, so the writer needs to
+        know which layer reaches lowest. A layer drawn as a volume reaches
+        below its own height, because the depth axis is projected downward as
+        well as across.
+
+        Parameters
+        ----------
+        scale
+            The diagram's scale.
+
+        Returns
+        -------
+        float
+            Distance from the axis to the lowest point drawn, in TikZ units.
+        """
+        return self.half_height(scale)
 
     def node_names(self) -> list[str]:
         """Return the suffixes of the separate nodes this layer draws.
@@ -183,6 +215,8 @@ class Layer(BaseModel, ABC):
         options = {"name": self.name, **self.pic_options(context)}
         if self.caption:
             options["caption"] = self.caption
+        if context.baseline:
+            options["baseline"] = context.baseline
         return draw_pic(self.pic, options, context.attach)
 
 
