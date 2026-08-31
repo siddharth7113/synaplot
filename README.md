@@ -54,8 +54,11 @@ The format comes from the suffix: `.svg`, `.png`, `.pdf`, or `.tex`.
 
 ## Installing
 
+synaplot is not on PyPI yet. Install it from a checkout:
+
 ```console
-pip install synaplot
+git clone https://github.com/siddharth7113/synaplot
+pip install ./synaplot
 ```
 
 Writing LaTeX source needs nothing else. A PDF or an image needs a LaTeX
@@ -80,12 +83,12 @@ print(diagram.to_tex())  # a document on its own
 print(diagram.to_tex(standalone=False))  # a fragment for a paper you have
 ```
 
-The style definitions keep their macros to themselves, so loading them does not
-disturb `\caption`, `\fill`, or anything else in the document around them.
+The style definitions use private macro names, so loading them does not
+redefine `\caption`, `\fill`, or anything else in the document around them.
 
 ## Documentation
 
-Full documentation lives at [synaplot.readthedocs.io](https://synaplot.readthedocs.io).
+The documentation is at [synaplot.readthedocs.io](https://synaplot.readthedocs.io).
 
 ## Credits
 
@@ -96,8 +99,8 @@ from that project. It ships in
 [src/synaplot/latex/styles/](src/synaplot/latex/styles/), and each file records
 what changed.
 
-PlotNeuralNet scripts do not run against synaplot. The Python interface, the
-rendering pipeline, and the command-line tool are new.
+Scripts written for PlotNeuralNet do not work with synaplot. The Python
+interface, the rendering pipeline, and the command-line tool are new.
 
 If you use synaplot in academic work, please cite both projects. See
 [CITATION.cff](CITATION.cff); PlotNeuralNet's DOI is

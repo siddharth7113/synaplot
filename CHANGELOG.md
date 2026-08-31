@@ -5,8 +5,8 @@ this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-synaplot is a rewrite of PlotNeuralNet with a new API. PlotNeuralNet scripts do
-not run against it.
+synaplot is a rewrite of PlotNeuralNet with a new API. Scripts written for
+PlotNeuralNet do not work with synaplot.
 
 ### Added
 
@@ -38,9 +38,8 @@ not run against it.
   them is level.
 - Layers are spaced by how deep they are drawn rather than by a fixed
   distance. TikZ draws the depth axis on a diagonal, so a deep layer takes up
-  horizontal room that its width does not account for, and a fixed distance
-  left neighbouring layers overlapping. Set `gap` to space every pair
-  equally.
+  horizontal room that its width does not account for. At a fixed distance,
+  two deep layers overlapped. Set `gap` to space every pair equally instead.
 - Rendering runs in a temporary directory and copies out only the file you
   asked for. `tikzmake.sh` deleted every `.tex` file in the working directory.
 

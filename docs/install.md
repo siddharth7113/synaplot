@@ -1,7 +1,10 @@
 # Installation
 
+synaplot is not on PyPI yet. Install it from a checkout:
+
 ```console
-pip install synaplot
+git clone https://github.com/siddharth7113/synaplot
+pip install ./synaplot
 ```
 
 That is enough to write LaTeX source. Producing a PDF or an image needs a LaTeX
