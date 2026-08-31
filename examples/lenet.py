@@ -7,7 +7,7 @@ Render it with::
 
 import synaplot as sp
 
-diagram = sp.Diagram(name="lenet", gap=1.6)
+diagram = sp.Diagram(name="lenet")
 diagram.add(
     sp.Conv(name="conv1", filters=64, spatial=512, caption="conv1"),
     sp.Pool(name="pool1"),

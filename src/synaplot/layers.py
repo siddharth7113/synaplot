@@ -37,6 +37,10 @@ class BoxLayer(Layer):
         """Return half the drawn height of the box."""
         return self.size.height * scale / 2
 
+    def depth_extent(self, scale: float) -> float:
+        """Return how deep the box is drawn."""
+        return self.size.depth * scale
+
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options common to every box layer."""
         return {
@@ -174,6 +178,10 @@ class Ball(Layer):
     def half_height(self, scale: float) -> float:
         """Return the radius, which is half the drawn height of a sphere."""
         return self.radius * scale
+
+    def depth_extent(self, scale: float) -> float:
+        """Return how deep the sphere is drawn."""
+        return 2 * self.radius * scale
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this sphere."""

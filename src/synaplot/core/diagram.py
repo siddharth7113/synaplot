@@ -16,6 +16,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+DEPTH_SLANT = 0.385
+"""How far across the page TikZ draws one unit of depth.
+
+TikZ projects the depth axis onto ``(-0.385, -0.385)`` by default, so a layer
+takes up horizontal room in proportion to how deep it is drawn.
+"""
+
+
 class ConnectionStyle(str, Enum):
     """How a connection is drawn.
 
@@ -82,8 +90,13 @@ class Diagram(BaseModel):
         Multiplier applied to every size in the diagram.
     gap
         Horizontal space left between two layers that are chained together.
+        ``None`` works it out from how deep the two layers are drawn, which is
+        usually what you want. Set a number to space every pair equally.
     layers
         The layers to draw, in drawing order.
+    margin
+        Space left between two layers on top of the room their depth takes up.
+        Ignored when ``gap`` is set.
     connections
         Arrows between layers.
 
@@ -114,7 +127,8 @@ class Diagram(BaseModel):
     name: str = "diagram"
     theme: Theme = Field(default_factory=Theme)
     scale: Scale = Field(default_factory=Scale)
-    gap: float = 1.0
+    gap: float | None = None
+    margin: float = 1.0
     layers: list[Layer] = Field(default_factory=list)
     connections: list[Connection] = Field(default_factory=list)
 
@@ -221,7 +235,7 @@ class Diagram(BaseModel):
             Each layer and the position it is drawn at. ``None`` means the
             origin.
         """
-        previous: str | None = None
+        previous: Layer | None = None
         for layer in self.layers:
             if layer.to is not None:
                 attach = layer.to
@@ -229,12 +243,29 @@ class Diagram(BaseModel):
                 attach = None
             else:
                 attach = Attach(
-                    layer=previous,
+                    layer=previous.name,
                     anchor=Anchor.EAST,
-                    offset=Offset(x=self.gap),
+                    offset=Offset(x=self._gap_between(previous, layer)),
                 )
             yield layer, attach
-            previous = layer.name
+            previous = layer
+
+    def _gap_between(self, before: Layer, after: Layer) -> float:
+        """Return how far apart to place two layers that follow one another.
+
+        TikZ draws the depth axis diagonally, at :data:`DEPTH_SLANT` of a unit
+        across for every unit deep. A layer therefore reaches further to each
+        side than its width alone, and two deep layers placed a fixed distance
+        apart overlap on the page. The space needed is half the projected depth
+        of each, plus a margin so the arrow between them is visible.
+        """
+        if self.gap is not None:
+            return self.gap
+        scale = self.scale.value
+        reach = (
+            DEPTH_SLANT * (before.depth_extent(scale) + after.depth_extent(scale)) / 2
+        )
+        return reach + self.margin
 
     def to_tikz(self) -> str:
         """Return the TikZ that draws this diagram, without a document around it.

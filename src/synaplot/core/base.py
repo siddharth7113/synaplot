@@ -90,6 +90,25 @@ class Layer(BaseModel, ABC):
         """
         return 0.0
 
+    def depth_extent(self, scale: float) -> float:
+        """Return how deep this layer is drawn.
+
+        TikZ draws the depth axis on a diagonal, so a deep layer takes up
+        horizontal room that its width does not account for. The diagram uses
+        this to leave enough space between one layer and the next.
+
+        Parameters
+        ----------
+        scale
+            The diagram's scale.
+
+        Returns
+        -------
+        float
+            The depth of the layer in TikZ units, before projection.
+        """
+        return 0.0
+
     @abstractmethod
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this layer's pic.
