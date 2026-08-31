@@ -30,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: Text Processing :: Markup :: LaTeX",
     "Typing :: Typed",
@@ -121,8 +122,10 @@ module = ["torch.*", "yaml.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--strict-markers --strict-config"
+# Docstring examples are run as tests, so they cannot drift from the code.
+testpaths = ["tests", "src/synaplot"]
+addopts = "--strict-markers --strict-config --doctest-modules"
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
 markers = [
     "render: test that shells out to a LaTeX toolchain (set SYNAPLOT_RENDER_TESTS=1)",
 ]

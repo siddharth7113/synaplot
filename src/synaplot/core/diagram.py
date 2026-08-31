@@ -1,0 +1,267 @@
+"""A diagram: the layers it draws and the arrows between them."""
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import TYPE_CHECKING
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from synaplot.core.base import Layer
+from synaplot.core.geometry import Anchor, Attach, Offset, Scale
+from synaplot.core.theme import Theme
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+
+class ConnectionStyle(str, Enum):
+    """How a connection is drawn.
+
+    Attributes
+    ----------
+    FORWARD
+        A straight arrow from one layer to the next.
+    SKIP
+        An arrow that leaves the top of the source, runs above the diagram, and
+        comes down onto the target. Used where a straight arrow would cut
+        through the layers in between.
+    """
+
+    FORWARD = "forward"
+    SKIP = "skip"
+
+
+class Connection(BaseModel):
+    """An arrow from one layer to another.
+
+    Parameters
+    ----------
+    source, target
+        Names of the layers the arrow runs between.
+    style
+        How to draw the arrow.
+    source_anchor, target_anchor
+        Which point on each layer to attach the arrow to. ``None`` lets the
+        style choose: a forward arrow runs east to west.
+    height
+        How far above the layers a skip arrow runs, as a fraction of the layer
+        height. A forward arrow ignores it.
+
+    Examples
+    --------
+    >>> Connection(source="conv1", target="pool1").style.value
+    'forward'
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    source: str
+    target: str
+    style: ConnectionStyle = ConnectionStyle.FORWARD
+    source_anchor: Anchor | None = None
+    target_anchor: Anchor | None = None
+    height: float = 1.25
+
+
+class Diagram(BaseModel):
+    """A network drawing, built from layers and the arrows between them.
+
+    Layers are drawn in the order they are added. A layer that does not say
+    where it goes is placed to the right of the one before it, so a plain
+    feed-forward network needs no positioning at all.
+
+    Parameters
+    ----------
+    name
+        Identifies the diagram. Used as the default output file name.
+    theme
+        Colors for the diagram.
+    scale
+        Multiplier applied to every size in the diagram.
+    gap
+        Horizontal space left between two layers that are chained together.
+    layers
+        The layers to draw, in drawing order.
+    connections
+        Arrows between layers.
+
+    Examples
+    --------
+    ``add`` and ``connect`` return the diagram, so they chain:
+
+    >>> from synaplot.layers import Conv, Pool
+    >>> diagram = (
+    ...     Diagram(name="tiny")
+    ...     .add(Conv(name="conv1", filters=64, spatial=224))
+    ...     .add(Pool(name="pool1"))
+    ...     .connect("conv1", "pool1")
+    ... )
+    >>> [layer.name for layer in diagram.layers]
+    ['conv1', 'pool1']
+
+    Names must be unique, because a connection refers to a layer by name:
+
+    >>> diagram.add(Pool(name="pool1"))
+    Traceback (most recent call last):
+        ...
+    ValueError: a layer named 'pool1' is already in this diagram
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    name: str = "diagram"
+    theme: Theme = Field(default_factory=Theme)
+    scale: Scale = Field(default_factory=Scale)
+    gap: float = 1.0
+    layers: list[Layer] = Field(default_factory=list)
+    connections: list[Connection] = Field(default_factory=list)
+
+    @field_validator("layers")
+    @classmethod
+    def _reject_duplicate_names(cls, layers: list[Layer]) -> list[Layer]:
+        seen: set[str] = set()
+        for layer in layers:
+            if layer.name in seen:
+                raise ValueError(f"a layer named {layer.name!r} appears twice")
+            seen.add(layer.name)
+        return layers
+
+    def add(self, *layers: Layer) -> Diagram:
+        """Add layers to the diagram.
+
+        Parameters
+        ----------
+        *layers
+            The layers to add, in drawing order.
+
+        Returns
+        -------
+        Diagram
+            This diagram, so calls can be chained.
+
+        Raises
+        ------
+        ValueError
+            If a layer's name is already used in this diagram.
+        """
+        for layer in layers:
+            if any(existing.name == layer.name for existing in self.layers):
+                raise ValueError(
+                    f"a layer named {layer.name!r} is already in this diagram"
+                )
+            self.layers.append(layer)
+        return self
+
+    def connect(
+        self,
+        source: str,
+        target: str,
+        style: ConnectionStyle | str = ConnectionStyle.FORWARD,
+        **kwargs: object,
+    ) -> Diagram:
+        """Draw an arrow between two layers.
+
+        Parameters
+        ----------
+        source, target
+            Names of the layers to connect. Both must already be in the
+            diagram.
+        style
+            How to draw the arrow.
+        **kwargs
+            Further fields for :class:`Connection`, such as ``height``.
+
+        Returns
+        -------
+        Diagram
+            This diagram, so calls can be chained.
+
+        Raises
+        ------
+        KeyError
+            If either name is not a layer in this diagram.
+        """
+        for name in (source, target):
+            if name not in self:
+                raise KeyError(f"no layer named {name!r} in this diagram")
+        self.connections.append(
+            Connection(source=source, target=target, style=style, **kwargs)
+        )
+        return self
+
+    def __contains__(self, name: object) -> bool:
+        """Return whether a layer of that name is in the diagram."""
+        return any(layer.name == name for layer in self.layers)
+
+    def __getitem__(self, name: str) -> Layer:
+        """Return the layer with that name.
+
+        Raises
+        ------
+        KeyError
+            If no layer has that name.
+        """
+        for layer in self.layers:
+            if layer.name == name:
+                return layer
+        raise KeyError(f"no layer named {name!r} in this diagram")
+
+    def placements(self) -> Iterator[tuple[Layer, Attach | None]]:
+        """Work out where each layer goes.
+
+        A layer that names its own position keeps it. A layer that does not is
+        placed to the right of the previous layer, separated by
+        :attr:`Diagram.gap`. The first such layer sits at the origin.
+
+        Yields
+        ------
+        tuple of (Layer, Attach or None)
+            Each layer and the position it is drawn at. ``None`` means the
+            origin.
+        """
+        previous: str | None = None
+        for layer in self.layers:
+            if layer.to is not None:
+                attach = layer.to
+            elif previous is None:
+                attach = None
+            else:
+                attach = Attach(
+                    layer=previous,
+                    anchor=Anchor.EAST,
+                    offset=Offset(x=self.gap),
+                )
+            yield layer, attach
+            previous = layer.name
+
+    def to_tikz(self) -> str:
+        """Return the TikZ that draws this diagram, without a document around it.
+
+        Returns
+        -------
+        str
+            The body of a ``tikzpicture``.
+        """
+        from synaplot.latex.writer import diagram_to_tikz
+
+        return diagram_to_tikz(self)
+
+    def to_tex(self, *, standalone: bool = True) -> str:
+        """Return a LaTeX document that draws this diagram.
+
+        Parameters
+        ----------
+        standalone
+            Whether to wrap the drawing in a document that compiles on its own.
+            Pass ``False`` for a fragment to paste into a paper, which brings
+            its own preamble.
+
+        Returns
+        -------
+        str
+            LaTeX source.
+        """
+        from synaplot.latex.writer import diagram_to_tex
+
+        return diagram_to_tex(self, standalone=standalone)
