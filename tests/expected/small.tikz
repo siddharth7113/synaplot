@@ -36,7 +36,7 @@
         height=30.0,
         width={3,3,3},
         depth=30.0,
-        bandfill=\syColorConvRelu,
+        bandfill=\syColorConvBand,
         bandopacity=0.6,
         xlabel={{"128","128","128"}},
         zlabel=256
@@ -79,8 +79,8 @@
 
 \coordinate (conv1-out-roof-conv1) at (conv1-north |- 0,5);
 \coordinate (conv1-out-roof-out) at (out-north |- 0,5);
-\draw [syCopyConnection] (conv1-north) -- (conv1-out-roof-conv1)
-    -- node[near end] {\syCopyArrow} (conv1-out-roof-out) -- (out-north);
+\draw [syConnection] (conv1-north) -- (conv1-out-roof-conv1)
+    -- node[near end] {\syArrow} (conv1-out-roof-out) -- (out-north);
 
 \syRowBase{syBaseline1}{conv1,pool1,conv2,out,add1}
 \syCaption{conv1}{syBaseline1}{conv1}

@@ -239,9 +239,7 @@ def test_a_layer_set_towards_the_reader_gets_a_caption_line_of_its_own():
 
 def test_the_diagram_scale_reaches_every_pic():
     """Spacing layers for one scale and drawing them at another lines up nothing."""
-    diagram = sp.Diagram(name="big", scale=sp.Scale(value=0.4)).add(
-        sp.Conv(name="c"), sp.Sum(name="s")
-    )
+    diagram = sp.Diagram(name="big", scale=0.4).add(sp.Conv(name="c"), sp.Sum(name="s"))
     assert diagram_to_tikz(diagram).count("scale=0.4") == 2
 
 
@@ -267,6 +265,16 @@ def test_an_annotation_can_point_away_from_its_layer():
     assert line.startswith("\\draw [syAnnotation] ([shift={(0,-0.25,0)}] loss-west) --")
     # Below the axis, so the label goes below the arrow rather than over it.
     assert line.endswith("++(-4,0,0) node[anchor=north west] {$g$};")
+
+
+def test_an_annotation_that_is_not_offset_labels_beyond_the_end_of_its_arrow():
+    """With no side of the line to sit on, a label over the line reads badly."""
+    diagram = sp.Diagram(name="map").add(sp.Conv(name="box"))
+    diagram.annotate("box", "north", anchor="north", reach=sp.Offset(y=3))
+    diagram.annotate("box", "west", anchor="west", reach=sp.Offset(x=-4))
+    above, beside = (annotation_to_tikz(a) for a in diagram.annotations)
+    assert "node[anchor=south] {north}" in above
+    assert "node[anchor=east] {west}" in beside
 
 
 def test_annotating_a_layer_that_is_not_there_is_refused():
@@ -305,6 +313,13 @@ def test_a_legend_can_be_written_out_by_hand():
     diagram = sp.Diagram(name="key").add(sp.Conv(name="c"))
     diagram.legend = sp.Legend(entries=[sp.LegendEntry(label="mine", fill="teal")])
     assert "\\syLegendItem{{teal}}{0.7}{mine}" in diagram_to_tikz(diagram)
+
+
+def test_a_layer_a_legend_names_is_filled_from_the_theme():
+    """A layer in a legend needs a color to show, and the theme has to hold it."""
+    for layer in layer_types().values():
+        if layer.title:
+            assert layer.role in sp.Theme.model_fields, layer.__name__
 
 
 def test_every_color_in_the_theme_is_drawn_by_some_layer():
@@ -351,6 +366,78 @@ def test_every_anchor_is_a_coordinate_the_box_pic_defines():
         )
     )
     assert drawn == {anchor.value for anchor in sp.Anchor}
+
+
+def _pic_source(styles: str, pic: str) -> str:
+    """Return the definition of one pic, up to where the next one starts."""
+    start = styles.index(f"{pic}/.pic=")
+    rest = styles.find("/.pic=", start + len(pic) + 6)
+    return styles[start:] if rest == -1 else styles[start:rest]
+
+
+def test_every_layer_declares_the_anchors_its_pic_draws():
+    """Holds each layer to the coordinates its own drawing defines.
+
+    A ball has no corners and a flat shape has no depth. Attaching to an anchor
+    a layer does not define is refused, so the list it declares has to be the
+    list the drawing writes.
+    """
+    styles = style_source()
+    for cls in layer_types().values():
+        if not cls.pic:
+            continue
+        drawn = set(
+            re.findall(
+                r"\\coordinate \(\\sy@name-(\w+)\)", _pic_source(styles, cls.pic)
+            )
+        )
+        declared = {anchor.value for anchor in cls.model_construct(name="x").anchors}
+        assert declared == drawn, cls.__name__
+
+
+def test_an_image_defines_the_anchors_it_declares():
+    """An image is drawn as a node, so it writes its own coordinates out."""
+    layer = sp.Input(name="img", path="cats.jpg")
+    tikz = sp.Diagram(name="in").add(layer).to_tikz()
+    drawn = set(re.findall(r"\\coordinate \(img-(\w+)\)", tikz))
+    assert drawn == {anchor.value for anchor in layer.anchors}
+
+
+def test_an_image_can_be_chained_from_and_connected_to():
+    """Everything else addresses a layer as name-anchor, so an image must too."""
+    diagram = sp.Diagram(name="in").add(
+        sp.Input(name="img", path="cats.jpg"), sp.Conv(name="c")
+    )
+    diagram.connect("img", "c")
+    tikz = diagram.to_tikz()
+    assert "at (img-east)" in tikz
+    assert "(img-east) -- node {\\syArrow} (c-west)" in tikz
+
+
+def test_an_image_is_listed_as_a_file_the_drawing_reads():
+    diagram = sp.Diagram(name="in").add(
+        sp.Input(name="img", path="cats.jpg"), sp.Conv(name="c")
+    )
+    assert [str(asset) for asset in diagram.assets()] == ["cats.jpg"]
+
+
+def test_attaching_to_an_anchor_a_layer_does_not_define_is_refused():
+    """LaTeX reports this as an unknown shape, deep inside its own log."""
+    diagram = sp.Diagram(name="x").add(sp.Conv(name="c"), sp.Sum(name="add1"))
+    diagram.connect("c", "add1", target_anchor="northeast")
+    with pytest.raises(ValueError, match="'add1' defines: anchor, east"):
+        diagram.to_tikz()
+
+
+def test_naming_a_layer_that_is_not_in_the_diagram_is_refused():
+    """A specification can name one; only building the diagram checks it."""
+    from synaplot import spec
+
+    diagram = spec.loads(
+        "layers: [{kind: conv, name: a}]\nconnections: [{source: a, target: ghost}]"
+    )
+    with pytest.raises(ValueError, match="'ghost', which is not a layer"):
+        diagram.to_tikz()
 
 
 def test_styles_keep_their_macros_private():

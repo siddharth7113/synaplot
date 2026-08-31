@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Anchor(str, Enum):
     """A named point on a drawn layer that other layers can attach to.
 
     The members are the coordinates the ``Box`` pic defines, which a test holds
-    them to. A ball defines only the five returned by :meth:`ball_anchors`, so
-    attaching to the corner of a ball fails when the diagram is checked.
+    them to. A layer drawn as something other than a box defines fewer: a ball
+    defines the five returned by :meth:`ball_anchors`, a flat shape the nine
+    returned by :meth:`flat_anchors`, and an image plane the seven returned by
+    :meth:`plane_anchors`. Attaching to an anchor a layer does not define is
+    refused when the diagram is drawn, rather than left to fail inside LaTeX.
 
     A name reads outwards from the depth axis: ``nearsoutheast`` is the corner
     towards the reader, at the bottom, on the right.
@@ -104,6 +107,50 @@ class Anchor(str, Enum):
         """
         return frozenset({cls.ANCHOR, cls.EAST, cls.WEST, cls.NORTH, cls.SOUTH})
 
+    @classmethod
+    def flat_anchors(cls) -> frozenset[Anchor]:
+        """Return the anchors a shape drawn flat on the page defines.
+
+        Returns
+        -------
+        frozenset of Anchor
+            The nine anchors available on a flat shape: the four sides, the
+            four corners, and the centre. A flat shape has no depth, so it
+            defines nothing along that axis.
+
+        Examples
+        --------
+        >>> len(Anchor.flat_anchors())
+        9
+        >>> Anchor.NEAR in Anchor.flat_anchors()
+        False
+        """
+        return cls.ball_anchors() | {
+            cls.NORTHEAST,
+            cls.NORTHWEST,
+            cls.SOUTHEAST,
+            cls.SOUTHWEST,
+        }
+
+    @classmethod
+    def plane_anchors(cls) -> frozenset[Anchor]:
+        """Return the anchors an image plane defines.
+
+        Returns
+        -------
+        frozenset of Anchor
+            The seven anchors available on a plane standing across the depth
+            axis: its centre, its top and bottom, its near and far edges, and
+            east and west, which both sit on the plane because it has no
+            thickness to separate them.
+
+        Examples
+        --------
+        >>> sorted(a.value for a in Anchor.plane_anchors())
+        ['anchor', 'east', 'far', 'near', 'north', 'south', 'west']
+        """
+        return cls.ball_anchors() | {cls.NEAR, cls.FAR}
+
 
 class Offset(BaseModel):
     r"""A shift applied on top of an anchor, in TikZ units.
@@ -149,7 +196,7 @@ class Offset(BaseModel):
 
 def _component(value: float | str) -> str:
     """Return one component of an offset, ready to put in a coordinate."""
-    return "{" + value + "}" if isinstance(value, str) else _number(value)
+    return "{" + value + "}" if isinstance(value, str) else number(value)
 
 
 class Attach(BaseModel):
@@ -245,31 +292,14 @@ class Size(BaseModel):
             describes several boxes.
         """
         if isinstance(self.width, list):
-            return "{" + ",".join(_number(w) for w in self.width) + "}"
-        return _number(self.width)
+            return "{" + ",".join(number(w) for w in self.width) + "}"
+        return number(self.width)
 
 
-class Scale(BaseModel):
-    """How TikZ units map to the size of the drawing.
-
-    Parameters
-    ----------
-    value
-        Multiplier applied to every size in the diagram. Must be positive.
-
-    Examples
-    --------
-    >>> Scale().value
-    0.2
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    value: float = Field(default=0.2, gt=0)
-
-
-def _number(value: float) -> str:
+def number(value: float) -> str:
     """Format a number for LaTeX, dropping a trailing ``.0``.
+
+    A drawing is full of numbers, and ``40.0`` reads worse than ``40``.
 
     Parameters
     ----------
@@ -283,11 +313,11 @@ def _number(value: float) -> str:
 
     Examples
     --------
-    >>> _number(2.0)
+    >>> number(2.0)
     '2'
-    >>> _number(1.5)
+    >>> number(1.5)
     '1.5'
-    >>> _number(-0.25)
+    >>> number(-0.25)
     '-0.25'
     """
     if value == int(value):

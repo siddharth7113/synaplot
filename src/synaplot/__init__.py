@@ -16,7 +16,7 @@ from synaplot.core.diagram import (
     Legend,
     LegendEntry,
 )
-from synaplot.core.geometry import Anchor, Attach, Offset, Scale, Size
+from synaplot.core.geometry import Anchor, Attach, Offset, Size
 from synaplot.core.theme import Theme
 from synaplot.layers import (
     BatchNorm,
@@ -59,7 +59,6 @@ __all__ = [
     "Offset",
     "Operator",
     "Pool",
-    "Scale",
     "Size",
     "Softmax",
     "Sum",

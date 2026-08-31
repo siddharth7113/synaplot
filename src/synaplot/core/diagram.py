@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, field_validator
 
 from synaplot.core.base import Layer
-from synaplot.core.geometry import Anchor, Attach, Offset, Scale
+from synaplot.core.geometry import Anchor, Attach, Offset
 from synaplot.core.theme import Theme
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
+
+    from synaplot.render import Renderer
+
+from pathlib import Path
 
 
 class ConnectionStyle(str, Enum):
@@ -103,8 +106,8 @@ class Connection(BaseModel):
         Which point on each layer to attach the arrow to. ``None`` lets the
         style choose: a forward arrow runs east to west.
     height
-        How far above the layers a skip arrow runs, as a fraction of the layer
-        height. Only a skip arrow uses it.
+        How far above the layers a skip arrow runs, as a multiple of the
+        tallest layer's half height. Only a skip arrow uses it.
     bend
         Which way an elbow arrow turns. Only an elbow arrow uses it.
     clearance
@@ -180,7 +183,8 @@ class LegendEntry(BaseModel):
     label
         What the color stands for. Read as LaTeX.
     role
-        Which color of the theme to draw, such as ``'pool'``.
+        Which color of the theme to draw, named by the field on
+        :class:`~synaplot.core.theme.Theme` that holds it, such as ``'pool'``.
     fill
         Color to draw instead, overriding the theme.
     opacity
@@ -278,7 +282,7 @@ class Diagram(BaseModel):
     theme
         Colors for the diagram.
     scale
-        Multiplier applied to every size in the diagram.
+        Multiplier applied to every size in the diagram. Must be positive.
     flow
         Which way a chain of layers runs. Layers that do not say where they go
         follow this direction, and a forward arrow runs between the faces it
@@ -321,11 +325,9 @@ class Diagram(BaseModel):
     ValueError: a layer named 'pool1' is already in this diagram
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     name: str = "diagram"
     theme: Theme = Field(default_factory=Theme)
-    scale: Scale = Field(default_factory=Scale)
+    scale: float = Field(default=0.2, gt=0)
     flow: Flow = Flow.RIGHT
     gap: float | None = None
     margin: float = 1.0
@@ -502,6 +504,20 @@ class Diagram(BaseModel):
                 return layer
         raise KeyError(f"no layer named {name!r} in this diagram")
 
+    def assets(self) -> list[Path]:
+        """Return every file the drawing reads, such as an input image.
+
+        Returns
+        -------
+        list of pathlib.Path
+            The files, in drawing order, without repeats.
+        """
+        found: dict[str, Path] = {}
+        for layer in self.layers:
+            for asset in layer.assets():
+                found.setdefault(str(asset), asset)
+        return list(found.values())
+
     def placements(self) -> Iterator[tuple[Layer, Attach | None]]:
         """Work out where each layer goes.
 
@@ -560,7 +576,7 @@ class Diagram(BaseModel):
         >>> diagram.axes()
         {'conv1': (0.0, 0.0), 'below': (-4.0, 0.0)}
         """
-        scale = self.scale.value
+        scale = self.scale
         axes: dict[str, tuple[float, float]] = {}
         for layer, attach in self.placements():
             if attach is None:
@@ -597,7 +613,7 @@ class Diagram(BaseModel):
         Going up, a layer's own middle lands on the previous layer's top, so
         half its height is added to the space.
         """
-        scale = self.scale.value
+        scale = self.scale
         if self.flow is Flow.UP:
             space = self.margin if self.gap is None else self.gap
             return Attach(
@@ -643,18 +659,28 @@ class Diagram(BaseModel):
 
         return diagram_to_tex(self, standalone=standalone)
 
-    def save(self, path: str | Path, *, dpi: int = 300) -> Path:
+    def save(
+        self,
+        path: str | Path,
+        *,
+        fmt: str | None = None,
+        dpi: int = 300,
+        renderer: type[Renderer] | None = None,
+    ) -> Path:
         """Write this diagram to a file.
-
-        The format comes from the file's suffix: ``.tex``, ``.pdf``, ``.svg``,
-        or ``.png``.
 
         Parameters
         ----------
         path
             Where to write the diagram.
+        fmt
+            Format to write: ``'tex'``, ``'pdf'``, ``'svg'``, or ``'png'``.
+            ``None`` reads it from the suffix of ``path``.
         dpi
             Resolution for PNG output.
+        renderer
+            Compile with this renderer rather than the most preferred installed
+            one.
 
         Returns
         -------
@@ -669,4 +695,4 @@ class Diagram(BaseModel):
         """
         from synaplot.render import render
 
-        return render(self, path, dpi=dpi)
+        return render(self, path, fmt=fmt, dpi=dpi, renderer=renderer)

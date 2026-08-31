@@ -23,7 +23,7 @@ layers:
      size: {width: 3, height: 10, depth: 10}}
   - {kind: conv, name: score, caption: score, filters: 21, spatial: I/32,
      size: {width: 1, height: 10, depth: 10}}
-  - {kind: unpool, name: up32, caption: upsample, size: {width: 1, height: 40, depth: 40}}
+  - {kind: deconv, name: up32, caption: upsample, size: {width: 1, height: 40, depth: 40}}
   - {kind: softmax, name: out, caption: softmax, classes: 21,
      size: {width: 1, height: 40, depth: 40}}
 connections:

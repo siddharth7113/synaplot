@@ -1,0 +1,77 @@
+# HED, after Xie and Tu (2015).
+#
+# A VGG backbone with a side output taken from each stage, and the five fused
+# into one edge map. Each side output sits further towards the reader than the
+# one before it, along the depth axis, which is where a drawing of feature maps
+# has room. Five arrows leaving one line have somewhere to go that way; drawn
+# on a row below the backbone they would run over one another.
+#
+# No arrow says how far to step out. A bypass along the depth axis works that
+# out from where its target was placed, so it arrives in that lane exactly and
+# the run to the side output is level.
+#
+# Render with: synaplot render examples/hed.yaml -o hed.svg
+name: hed
+layers:
+  - {kind: conv_relu, name: conv1, caption: conv1, filters: [64, 64], spatial: I,
+     size: {width: [2, 2], height: 40, depth: 40}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 35, depth: 35}}
+  - {kind: conv_relu, name: conv2, caption: conv2, filters: [128, 128], spatial: I/2,
+     size: {width: [3, 3], height: 35, depth: 35}}
+  - {kind: pool, name: pool2, size: {width: 1, height: 30, depth: 30}}
+  - {kind: conv_relu, name: conv3, caption: conv3, filters: [256, 256, 256], spatial: I/4,
+     size: {width: [4, 4, 4], height: 30, depth: 30}}
+  - {kind: pool, name: pool3, size: {width: 1, height: 23, depth: 23}}
+  - {kind: conv_relu, name: conv4, caption: conv4, filters: [512, 512, 512], spatial: I/8,
+     size: {width: [5, 5, 5], height: 23, depth: 23}}
+  - {kind: pool, name: pool4, size: {width: 1, height: 15, depth: 15}}
+  - {kind: conv_relu, name: conv5, caption: conv5, filters: [512, 512, 512], spatial: I/16,
+     size: {width: [5, 5, 5], height: 15, depth: 15}}
+
+  # One side output per stage. Each is one channel at full resolution, and each
+  # sits one lane further forward than the last.
+  - {kind: conv, name: side5, filters: 1, spatial: I,
+     size: {width: 1, height: 15, depth: 15},
+     to: {layer: conv5, anchor: east, offset: {x: 3, z: 8}}}
+  - {kind: conv, name: side4, filters: 1, spatial: I,
+     size: {width: 1, height: 15, depth: 15},
+     to: {layer: conv5, anchor: east, offset: {x: 3, z: 16}}}
+  - {kind: conv, name: side3, filters: 1, spatial: I,
+     size: {width: 1, height: 15, depth: 15},
+     to: {layer: conv5, anchor: east, offset: {x: 3, z: 24}}}
+  - {kind: conv, name: side2, filters: 1, spatial: I,
+     size: {width: 1, height: 15, depth: 15},
+     to: {layer: conv5, anchor: east, offset: {x: 3, z: 32}}}
+  - {kind: conv, name: side1, filters: 1, spatial: I,
+     size: {width: 1, height: 15, depth: 15},
+     to: {layer: conv5, anchor: east, offset: {x: 3, z: 40}}}
+
+  - {kind: sum, name: fuse, caption: fuse, radius: 3,
+     to: {layer: side5, anchor: east, offset: {x: 5}}}
+  - {kind: softmax, name: out, caption: edge map, classes: 1,
+     size: {width: 1, height: 40, depth: 40},
+     to: {layer: fuse, anchor: east, offset: {x: 5}}}
+connections:
+  - {source: conv1, target: pool1}
+  - {source: pool1, target: conv2}
+  - {source: conv2, target: pool2}
+  - {source: pool2, target: conv3}
+  - {source: conv3, target: pool3}
+  - {source: pool3, target: conv4}
+  - {source: conv4, target: pool4}
+  - {source: pool4, target: conv5}
+  # Each stage steps forward into its own lane, then runs level to its side
+  # output.
+  - {source: conv5, target: side5, style: bypass, source_anchor: near, target_anchor: west}
+  - {source: conv4, target: side4, style: bypass, source_anchor: near, target_anchor: west}
+  - {source: conv3, target: side3, style: bypass, source_anchor: near, target_anchor: west}
+  - {source: conv2, target: side2, style: bypass, source_anchor: near, target_anchor: west}
+  - {source: conv1, target: side1, style: bypass, source_anchor: near, target_anchor: west}
+  # The five come back to the axis at the fuse.
+  - {source: side5, target: fuse}
+  - {source: side4, target: fuse}
+  - {source: side3, target: fuse}
+  - {source: side2, target: fuse}
+  - {source: side1, target: fuse}
+  - {source: fuse, target: out}
+legend: {position: south west}

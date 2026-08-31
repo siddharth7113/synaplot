@@ -13,6 +13,7 @@ from synaplot.core.theme import Theme, color_macro
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -62,7 +63,10 @@ class Layer(BaseModel, ABC):
     pic : str
         Name of the TikZ pic this class draws with, such as ``'Box'``.
     role : str
-        Which color of the theme this layer is filled with.
+        Which color of the theme this layer is filled with, named by the field
+        on :class:`~synaplot.core.theme.Theme` that holds it. A layer that is
+        not filled from the theme at all, such as an included image, leaves it
+        empty.
     title : str
         What this kind of layer is called, for a legend to name it. A layer
         that stands for no one kind of thing, such as an input image or a block
@@ -76,7 +80,7 @@ class Layer(BaseModel, ABC):
     """
 
     pic: ClassVar[str] = ""
-    role: ClassVar[str] = "conv"
+    role: ClassVar[str] = ""
     title: ClassVar[str] = ""
     flat: ClassVar[bool] = False
 
@@ -120,6 +124,21 @@ class Layer(BaseModel, ABC):
             Distance from the axis to the top of the layer, in TikZ units.
         """
         return 0.0
+
+    def assets(self) -> list[Path]:
+        """Return the files this layer's drawing reads.
+
+        Rendering copies these in beside the LaTeX source, so a path written
+        relative to the directory you render from keeps working inside the
+        temporary directory the document is compiled in.
+
+        Returns
+        -------
+        list of pathlib.Path
+            The files, in no particular order. Most layers draw themselves and
+            read nothing.
+        """
+        return []
 
     def node_names(self) -> list[str]:
         """Return the suffixes of the separate nodes this layer draws.

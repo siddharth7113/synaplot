@@ -23,8 +23,13 @@ class Theme(BaseModel):
     name
         Identifies the theme. Carried into a specification so a diagram can name
         the theme it was drawn with.
-    conv, conv_relu, pool, unpool, fc, fc_relu, softmax, sum, concat, deconv, batchnorm
+    conv, deconv, pool, unpool, fc, softmax, sum, concat, batchnorm
         Fill color for the layer of that name.
+    conv_band, fc_band
+        Color of the band drawn down the right of a convolution or a fully
+        connected layer, which stands for the activation after it. The layer
+        itself is filled with ``conv`` or ``fc``, so these color a part of a
+        layer rather than a layer.
     edge
         Color of the arrows drawn between layers.
 
@@ -46,15 +51,15 @@ class Theme(BaseModel):
     name: str = "default"
 
     conv: Color = "rgb:yellow,5;red,2.5;white,5"
-    conv_relu: Color = "rgb:yellow,5;red,5;white,5"
+    conv_band: Color = "rgb:yellow,5;red,5;white,5"
     pool: Color = "rgb:red,1;black,0.3"
     unpool: Color = "rgb:blue,2;green,1;black,0.3"
     fc: Color = "rgb:blue,5;red,2.5;white,5"
-    fc_relu: Color = "rgb:blue,5;red,5;white,4"
+    fc_band: Color = "rgb:blue,5;red,5;white,4"
     softmax: Color = "rgb:magenta,5;black,7"
     sum: Color = "rgb:blue,5;green,15"
     concat: Color = "rgb:blue,5;red,2.5;white,5"
-    deconv: Color = "rgb:blue,2;green,1;black,0.3"
+    deconv: Color = "rgb:blue,5;green,2.5;white,5"
     batchnorm: Color = "rgb:yellow,5;black,3"
     edge: Color = "rgb:blue,4;red,1;green,4;black,3"
 
@@ -87,7 +92,7 @@ def color_macro(role: str) -> str:
     Parameters
     ----------
     role
-        A field name on :class:`Theme`, such as ``'conv_relu'``.
+        A field name on :class:`Theme`, such as ``'conv_band'``.
 
     Returns
     -------
@@ -98,8 +103,8 @@ def color_macro(role: str) -> str:
     --------
     >>> color_macro("conv")
     'syColorConv'
-    >>> color_macro("conv_relu")
-    'syColorConvRelu'
+    >>> color_macro("conv_band")
+    'syColorConvBand'
     """
     camel = "".join(part.capitalize() for part in role.split("_"))
     return f"syColor{camel}"

@@ -1,0 +1,26 @@
+# A softmax loss, after the figure that shipped with PlotNeuralNet.
+#
+# One layer, and four labelled arrows saying what reaches it and what leaves.
+# The arrows above the axis carry the forward pass and the ones below carry the
+# gradients, which is the convention this kind of figure is read with.
+#
+# Render with: synaplot render examples/softmax_loss.yaml -o softmax_loss.svg
+name: softmax_loss
+layers:
+  - kind: conv
+    name: loss
+    caption: 'SoftmaxLoss: $E_\mathcal{S}$'
+    fill: 'rgb:blue,1.5;red,3.5;green,3.5;white,5'
+    opacity: 0.5
+    size: {width: 7, height: 20, depth: 20}
+annotations:
+  # Forward, in from the left and on out to the right.
+  - {layer: loss, text: '$p(x^{(t)})$', anchor: west,
+     offset: {y: 0.25}, reach: {x: -4}}
+  - {layer: loss, text: '$E_\mathcal{S}\,[p;\theta]$', anchor: east,
+     offset: {y: 0.25}, reach: {x: 4}, inward: false}
+  # Backward, the other way and below the axis.
+  - {layer: loss, text: '$\frac{\partial L}{\partial E_\mathcal{S}}\frac{\partial E_\mathcal{S}}{\partial p}$',
+     anchor: west, offset: {y: -0.25}, reach: {x: -4}, inward: false}
+  - {layer: loss, text: '$\frac{\partial L}{\partial E_\mathcal{S}} = \lambda_\mathcal{S}$',
+     anchor: east, offset: {y: -0.25}, reach: {x: 4}}

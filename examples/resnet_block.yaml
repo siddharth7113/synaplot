@@ -1,0 +1,26 @@
+# A residual block, after He, Zhang, Ren and Sun (2015).
+#
+# The building block of a ResNet: two convolutions, each normalized, and the
+# input added back on at the end. The skip runs over the top, which is where
+# there is room for it, and meets the sum from above.
+#
+# Render with: synaplot render examples/resnet_block.yaml -o resnet_block.svg
+name: resnet_block
+layers:
+  - {kind: conv_relu, name: conv1, caption: '$3\times3$', filters: 64, spatial: H,
+     size: {width: 2, height: 40, depth: 40}}
+  - {kind: batch_norm, name: bn1, caption: norm, size: {width: 0.7, height: 40, depth: 40}}
+  - {kind: conv, name: conv2, caption: '$3\times3$', filters: 64, spatial: H,
+     size: {width: 2, height: 40, depth: 40}}
+  - {kind: batch_norm, name: bn2, caption: norm, size: {width: 0.7, height: 40, depth: 40}}
+  - {kind: sum, name: add, radius: 3}
+  - {kind: conv_relu, name: out, caption: relu, filters: 64, spatial: H,
+     size: {width: 2, height: 40, depth: 40}}
+connections:
+  - {source: conv1, target: bn1}
+  - {source: bn1, target: conv2}
+  - {source: conv2, target: bn2}
+  - {source: bn2, target: add}
+  - {source: add, target: out}
+  - {source: conv1, target: add, style: skip}
+legend: {position: south east}

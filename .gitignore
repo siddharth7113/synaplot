@@ -21,8 +21,7 @@ htmlcov/
 # Documentation
 docs/_build/
 docs/api/generated/
-docs/examples/generated/
-docs/sg_execution_times.rst
+docs/_gallery/
 
 # LaTeX build output
 *.aux

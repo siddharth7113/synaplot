@@ -114,6 +114,32 @@ def _missing(what: str, options: Sequence[type[Tool]]) -> ToolchainError:
     return ToolchainError("\n".join(lines))
 
 
+def _copy_assets(diagram: Diagram, work: Path) -> None:
+    """Copy the files a drawing reads into the directory it is compiled in.
+
+    An image is named by a path relative to the directory you render from, and
+    compiling happens in a temporary directory, so the file has to travel with
+    the source. Its relative path is kept, so the source needs no rewriting.
+
+    Raises
+    ------
+    ToolchainError
+        If a file the drawing reads is not there. LaTeX reports this as a
+        failure to load a picture, several hundred lines into its own log.
+    """
+    for asset in diagram.assets():
+        if asset.is_absolute():
+            continue
+        if not asset.is_file():
+            raise ToolchainError(
+                f"{asset} is not there, and the diagram draws it. Paths are "
+                f"read relative to {Path.cwd()}."
+            )
+        destination = work / asset
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(asset.read_bytes())
+
+
 def render(
     diagram: Diagram,
     path: str | Path,
@@ -179,6 +205,7 @@ def render(
         work = Path(directory)
         tex = work / f"{diagram.name}.tex"
         tex.write_text(source, encoding="utf-8")
+        _copy_assets(diagram, work)
         pdf = engines[0].to_pdf(tex, work)
         if converter is None:
             target.write_bytes(pdf.read_bytes())

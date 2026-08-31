@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from synaplot.core.base import DrawContext, Layer, tikz_colour
 from synaplot.core.diagram import FORWARD_FACES, Bend, ConnectionStyle, Flow
-from synaplot.core.geometry import Anchor
+from synaplot.core.geometry import Anchor, number
 from synaplot.core.theme import color_macro
 
 if TYPE_CHECKING:
@@ -26,20 +26,14 @@ TIKZ_SETUP = r"""
 \pgfsetlayers{syBackground,main}
 """.strip()
 
-# Definitions the connections rely on: \syArrow and \syCopyArrow draw the
-# arrowhead placed partway along a line, and syConnection and syCopyConnection
-# are the line styles themselves. EDGE is a placeholder that preamble() swaps
-# for the theme's edge color.
+# Definitions the connections rely on: \syArrow draws the arrowhead placed
+# partway along a line, and syConnection is the line style itself. EDGE is a
+# placeholder that preamble() swaps for the theme's edge color.
 ARROW_STYLES = r"""
 \newcommand{\syArrow}{%
     \tikz \draw[-Stealth,line width=0.8mm,draw=EDGE] (-0.3,0) -- ++(0.3,0);}
-\newcommand{\syCopyArrow}{%
-    \tikz \draw[-Stealth,line width=0.8mm,draw=EDGE] (-0.3,0) -- ++(0.3,0);}
 \tikzset{
     syConnection/.style={
-        ultra thick, draw=EDGE, opacity=0.7,
-        every node/.style={sloped,allow upside down}},
-    syCopyConnection/.style={
         ultra thick, draw=EDGE, opacity=0.7,
         every node/.style={sloped,allow upside down}},
     syEdge/.style={draw=EDGE, opacity=0.35, line width=0.2mm},
@@ -151,17 +145,15 @@ def connection_to_tikz(
     # Both ends rise to the same height, so the run between them is level. Using
     # each layer's own height instead would slant the run whenever two layers of
     # different heights are connected.
-    level = _format(roof * connection.height)
+    level = number(roof * connection.height)
     top_source = f"{source}-{target}-roof-{source}"
     top_target = f"{source}-{target}-roof-{target}"
-    line = line.replace("syConnection", "syCopyConnection")
     return "\n".join(
         [
             f"\\coordinate ({top_source}) at ({source}-north |- 0,{level});",
             f"\\coordinate ({top_target}) at ({target}-north |- 0,{level});",
             f"\\draw [{line}] ({source}-north) -- ({top_source})",
-            f"    --{head.replace('syArrow', 'syCopyArrow')} ({top_target})"
-            f" -- ({target}-north);",
+            f"    --{head} ({top_target}) -- ({target}-north);",
         ]
     )
 
@@ -242,7 +234,7 @@ def _bypass(
     # names, because the corner only says where to leave from.
     end = connection.target_anchor or _SIDE[across, up, out]
     clearance = _clearance(connection, start, out, diagram)
-    step = ",".join(_format(way * clearance) for way in (across, up, out))
+    step = ",".join(number(way * clearance) for way in (across, up, out))
     # Having stepped sideways, come back on the other axis first, so the arrow
     # meets the target square on rather than at a slant. An arrow that stepped
     # along the depth axis runs straight to the target instead: a square turn
@@ -271,7 +263,7 @@ def _clearance(
     if not out or diagram is None:
         return DEFAULT_CLEARANCE
     depths = diagram.axes()
-    scale = diagram.scale.value
+    scale = diagram.scale
     leaves = depths[connection.source][1] + start.dive * (
         diagram[connection.source].depth_extent(scale) / 2
     )
@@ -304,22 +296,6 @@ def _full_connection(connection: Connection, diagram: Diagram | None) -> str:
         for end in ends
     )
     return f"\\begin{{pgfonlayer}}{{syBackground}}\n{edges}\n\\end{{pgfonlayer}}"
-
-
-def _format(value: float) -> str:
-    """Format a number for LaTeX, dropping a trailing ``.0``.
-
-    Parameters
-    ----------
-    value
-        The number to format.
-
-    Returns
-    -------
-    str
-        The number without a redundant decimal part.
-    """
-    return str(int(value)) if value == int(value) else repr(round(value, 4))
 
 
 def _caption_rows(diagram: Diagram) -> list[list[Layer]]:
@@ -412,17 +388,30 @@ def _shifted(coordinate: str, offset: Offset) -> str:
 def _label_anchor(annotation: Annotation) -> str:
     """Return which corner of an annotation's label sits at the end of its arrow.
 
-    The label is pinned on the side the arrow came from, so it lies along the
-    arrow. Two arrows into the same face, one offset up and one down, then get
-    their labels above and below rather than on top of each other.
+    An arrow offset off the layer's axis has a clear side of the line to put
+    its label on, so the label goes on that side and lies back along the arrow.
+    Two arrows into the same face, one offset up and one down, then get their
+    labels above and below rather than on top of each other.
+
+    An arrow that was not offset has no such side, so its label goes beyond the
+    end of the arrow instead, where it cannot cover the line.
     """
-    up = _sign(annotation.offset.y) or -_sign(annotation.reach.y)
-    across = _sign(annotation.reach.x)
-    corner = [
-        {1: "south", -1: "north"}.get(up, ""),
-        {1: "east", -1: "west"}.get(across, ""),
-    ]
+    if _sign(annotation.offset.y):
+        corner = (
+            _SIDE_Y.get(-_sign(annotation.offset.y), ""),
+            _SIDE_X.get(_sign(annotation.reach.x), ""),
+        )
+    else:
+        corner = (
+            _SIDE_Y.get(-_sign(annotation.reach.y), ""),
+            _SIDE_X.get(-_sign(annotation.reach.x), ""),
+        )
     return " ".join(part for part in corner if part) or "center"
+
+
+#: The direction each sign points in, along each axis.
+_SIDE_X = {1: "east", -1: "west"}
+_SIDE_Y = {1: "north", -1: "south"}
 
 
 def _sign(value: float | str) -> int:
@@ -459,6 +448,54 @@ def legend_to_tikz(diagram: Diagram) -> str:
     return f"\\syLegend{{{corner.value}}}{{{pinned}}}{{{step}}}{{%\n{rows}}}"
 
 
+def check(diagram: Diagram) -> None:
+    """Raise if the diagram names a layer or an anchor that is not there.
+
+    A ball has no corners and a flat shape has no depth, so an anchor that
+    reads correctly on a box can name a coordinate the drawing never defines.
+    LaTeX reports that as ``No shape named ... is known``, several hundred
+    lines into its own log, which is why it is caught here instead.
+
+    Parameters
+    ----------
+    diagram
+        The diagram to check.
+
+    Raises
+    ------
+    ValueError
+        If a layer, connection, or annotation names a layer that is not in the
+        diagram, or an anchor that layer does not define.
+    """
+    for layer in diagram.layers:
+        if layer.to is not None:
+            _check(diagram, layer.to.layer, layer.to.anchor, f"{layer.name!r} sits on")
+    for connection in diagram.connections:
+        arrow = f"the arrow from {connection.source!r} to {connection.target!r}"
+        _check(diagram, connection.source, connection.source_anchor, f"{arrow} leaves")
+        _check(diagram, connection.target, connection.target_anchor, f"{arrow} reaches")
+    for annotation in diagram.annotations:
+        _check(
+            diagram,
+            annotation.layer,
+            annotation.anchor,
+            f"the label {annotation.text!r} points at",
+        )
+
+
+def _check(diagram: Diagram, name: str, anchor: Anchor | None, use: str) -> None:
+    """Raise if one reference names a layer or an anchor that is not there."""
+    if name not in diagram:
+        raise ValueError(f"{use} {name!r}, which is not a layer in this diagram")
+    if anchor is None or anchor in diagram[name].anchors:
+        return
+    defined = ", ".join(sorted(a.value for a in diagram[name].anchors))
+    raise ValueError(
+        f"{use} {name!r} at its {anchor.value}, which it does not define. "
+        f"{name!r} defines: {defined}."
+    )
+
+
 def diagram_to_tikz(diagram: Diagram) -> str:
     """Return the body of the ``tikzpicture`` that draws a diagram.
 
@@ -472,7 +509,8 @@ def diagram_to_tikz(diagram: Diagram) -> str:
     str
         TikZ statements, without the surrounding environment.
     """
-    scale = diagram.scale.value
+    check(diagram)
+    scale = diagram.scale
     rows = _caption_rows(diagram)
     # A captioned row hangs its captions from the lowest point any of its layers
     # reached, so those layers are drawn inside a scope that records it.

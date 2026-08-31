@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 from pathlib import Path
 
@@ -148,6 +149,37 @@ def test_every_format_is_written(tmp_path: Path, suffix: str):
         pytest.skip(f"no converter for {suffix} is installed")
     written = render(tiny(), tmp_path / f"out.{suffix}")
     assert written.stat().st_size > 0
+
+
+def test_a_missing_image_is_reported_before_latex_sees_it(tmp_path: Path):
+    """LaTeX reports this hundreds of lines into its own log."""
+    diagram = sp.Diagram(name="in").add(sp.Input(name="img", path="nowhere.png"))
+    with pytest.raises(ToolchainError, match=r"nowhere\.png is not there"):
+        render(diagram, tmp_path / "out.pdf", renderer=Tectonic)
+
+
+@pytest.mark.render
+@pytest.mark.skipif(
+    not os.environ.get("SYNAPLOT_RENDER_TESTS"),
+    reason="set SYNAPLOT_RENDER_TESTS=1 to compile diagrams",
+)
+def test_a_diagram_with_an_image_compiles(tmp_path: Path, monkeypatch):
+    """The image is named relative to where you render from, not where LaTeX runs."""
+    if not renderers():
+        pytest.skip("no LaTeX engine is installed")
+    monkeypatch.chdir(tmp_path)
+    # A 1x1 PNG, so the test needs no image checked in beside it.
+    Path("pixel.png").write_bytes(
+        base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8"
+            "z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        )
+    )
+    diagram = sp.Diagram(name="in").add(
+        sp.Input(name="img", path="pixel.png"), sp.Conv(name="c", filters=8)
+    )
+    diagram.connect("img", "c")
+    assert render(diagram, Path("out.pdf")).stat().st_size > 0
 
 
 @pytest.mark.render

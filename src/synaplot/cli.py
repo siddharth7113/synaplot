@@ -7,7 +7,7 @@ import platform
 import runpy
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 import typer
 import yaml
@@ -26,7 +26,7 @@ app = typer.Typer(
 )
 
 
-def _fail(message: str) -> None:
+def _fail(message: str) -> NoReturn:
     """Print a message to standard error and stop with a non-zero status."""
     typer.secho(message, fg=typer.colors.RED, err=True)
     raise typer.Exit(code=1)

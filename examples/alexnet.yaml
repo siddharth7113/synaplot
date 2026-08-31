@@ -15,9 +15,9 @@ layers:
   - {kind: conv, name: conv5, caption: conv5, filters: 256, spatial: 13,
      size: {width: 4, height: 27, depth: 27}}
   - {kind: pool, name: pool5, size: {width: 1, height: 18, depth: 18}}
-  - {kind: conv_relu, name: fc6, caption: fc6, filters: 4096, spatial: 1,
+  - {kind: fully_connected, name: fc6, caption: fc6, units: 4096,
      size: {width: 3, height: 3, depth: 25}}
-  - {kind: conv_relu, name: fc7, caption: fc7, filters: 4096, spatial: 1,
+  - {kind: fully_connected, name: fc7, caption: fc7, units: 4096,
      size: {width: 3, height: 3, depth: 25}}
   - {kind: softmax, name: out, caption: fc8 + softmax, classes: 1000,
      size: {width: 3, height: 3, depth: 25}}
@@ -32,3 +32,4 @@ connections:
   - {source: pool5, target: fc6}
   - {source: fc6, target: fc7}
   - {source: fc7, target: out}
+legend: {position: south east}

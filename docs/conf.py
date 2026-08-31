@@ -1,6 +1,11 @@
 """Sphinx configuration."""
 
+import sys
 from importlib.metadata import version as get_version
+from pathlib import Path
+
+# The directives that draw the diagrams in these pages.
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
 project = "synaplot"
 copyright = "2026, Siddharth"
@@ -17,10 +22,11 @@ extensions = [
     "myst_parser",
     "sphinx_copybutton",
     "sphinx_design",
+    "synaplot_docs",
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "_gallery", "_ext"]
 
 autosummary_generate = True
 autodoc_typehints = "description"

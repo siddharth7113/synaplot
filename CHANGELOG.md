@@ -66,6 +66,27 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
+- An input image works. It was drawn as a plain TikZ node, while every other
+  layer is addressed as `name-anchor`, so chaining a layer after an image or
+  drawing an arrow from one failed to compile. The image is also copied in
+  beside the LaTeX source, so a path written relative to the directory you
+  render from resolves inside the temporary directory the document is compiled
+  in, and it is reflected once, because the depth axis runs to the lower left
+  and left the picture mirrored.
+- Attaching to an anchor a layer does not define is refused, and says which
+  anchors that layer has. A ball has no corners and a flat shape has no depth,
+  and LaTeX reports the mistake as `No shape named ... is known`, several
+  hundred lines into its own log. Naming a layer that is not in the diagram is
+  refused the same way, which a specification could do silently.
+- The theme's band colours are `conv_band` and `fc_band`, not `conv_relu` and
+  `fc_relu`. They colour the band down the right of a layer, which stands for
+  the activation; the layer itself is filled with `conv` or `fc`. The old names
+  described a kind of layer while colouring part of one.
+- A transposed convolution has a colour of its own. It shared one with
+  upsampling, so a drawing could not tell the two apart.
+- `Diagram.scale` is a number. It was a model wrapping one number, so setting
+  it read `Diagram(scale=Scale(value=0.4))`.
+- `Diagram.save` takes `fmt` and `renderer`, which only `render` accepted.
 - The diagram's `scale` reaches the layers it draws. Layers used to be spaced
   for the scale set and drawn at the default one, so any scale but the default
   lined up nothing.

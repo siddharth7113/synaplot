@@ -7,6 +7,7 @@ looks, and are usually chosen so a shrinking feature map is drawn smaller.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import ClassVar, Literal
 
 from pydantic import Field
@@ -101,7 +102,7 @@ class BandedBox(BoxLayer):
     """
 
     pic: ClassVar[str] = "RightBandedBox"
-    band_role: ClassVar[str] = "conv_relu"
+    band_role: ClassVar[str] = "conv_band"
 
     band_opacity: float = Field(default=0.6, ge=0, le=1)
 
@@ -165,7 +166,7 @@ class FullyConnected(BandedBox):
 
     kind: Literal["fully_connected"] = "fully_connected"
     role: ClassVar[str] = "fc"
-    band_role: ClassVar[str] = "fc_relu"
+    band_role: ClassVar[str] = "fc_band"
     title: ClassVar[str] = "Fully connected"
 
     size: Size = Size(width=1.5, height=3, depth=25)
@@ -294,11 +295,15 @@ class Concat(Ball):
 class Input(Layer):
     r"""An image drawn as a flat plane, used to show the input to a network.
 
+    The plane stands across the depth axis, so its height is drawn up the page
+    and its width towards the reader.
+
     Parameters
     ----------
     path
-        Path to the image, as LaTeX will resolve it. Relative paths are read
-        relative to the directory the document is compiled in.
+        Path to the image. A relative path is read relative to the directory
+        you render from, and the file is copied in beside the LaTeX source, so
+        the same path works whatever directory the compiler runs in.
     width, height
         Size of the plane, in centimetres.
 
@@ -308,6 +313,7 @@ class Input(Layer):
     flat: ClassVar[bool] = True
 
     kind: Literal["input"] = "input"
+    title: ClassVar[str] = ""
 
     path: str
     width: float = 8.0
@@ -315,25 +321,58 @@ class Input(Layer):
 
     @property
     def anchors(self) -> frozenset[Anchor]:
-        """Return no anchors. An image plane is a node, not a pic."""
-        return frozenset()
+        """Return the seven anchors an image plane defines."""
+        return Anchor.plane_anchors()
+
+    def assets(self) -> list[Path]:
+        """Return the image, so that rendering copies it in beside the source."""
+        return [Path(self.path)]
 
     def half_height(self, scale: float) -> float:
-        """Return half the height of the image plane, which is given in centimetres."""
+        """Return half the height of the plane, which is given in centimetres."""
         return self.height / 2
+
+    def depth_extent(self, scale: float) -> float:
+        """Return the width of the plane, which is drawn along the depth axis."""
+        return self.width
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return an empty mapping. An image is drawn as a node, not a pic."""
         return {}
 
     def to_tikz(self, context: DrawContext) -> str:
-        """Return the TikZ node that draws the image."""
+        """Return the node that draws the image, and the anchors it defines.
+
+        A node names its own anchors with a dot, as in ``(img.east)``, while
+        every layer in a diagram is addressed with a hyphen. The coordinates
+        are written out so that an image can be chained from and connected to
+        like any other layer.
+        """
         at = context.attach.to_tikz() if context.attach else "(0,0,0)"
-        return (
-            f"\\node[canvas is zy plane at x=0] ({self.name}) at {at}\n"
-            f"    {{\\includegraphics[width={self.width:g}cm,"
-            f"height={self.height:g}cm]{{{self.path}}}}};"
-        )
+        point = at[1:-1]
+        offsets = {
+            Anchor.ANCHOR: (0.0, 0.0),
+            Anchor.EAST: (0.0, 0.0),
+            Anchor.WEST: (0.0, 0.0),
+            Anchor.NORTH: (self.height / 2, 0.0),
+            Anchor.SOUTH: (-self.height / 2, 0.0),
+            Anchor.NEAR: (0.0, self.width / 2),
+            Anchor.FAR: (0.0, -self.width / 2),
+        }
+        lines = [
+            # The depth axis runs to the lower left, so the plane's own x axis
+            # runs the same way and the image comes out mirrored. Reflecting it
+            # once puts it back.
+            f"\\node[canvas is zy plane at x=0] ({self.name}-plane) at {at}\n"
+            f"    {{\\reflectbox{{\\includegraphics[width={self.width:g}cm,"
+            f"height={self.height:g}cm]{{{self.path}}}}}}};"
+        ]
+        lines += [
+            f"\\coordinate ({self.name}-{anchor.value}) at "
+            f"([shift={{(0,{up:g},{out:g})}}] {point});"
+            for anchor, (up, out) in offsets.items()
+        ]
+        return "\n".join(lines)
 
 
 class Dense(Layer):
@@ -380,20 +419,8 @@ class Dense(Layer):
 
     @property
     def anchors(self) -> frozenset[Anchor]:
-        """Return the anchors a flat column defines."""
-        return frozenset(
-            {
-                Anchor.ANCHOR,
-                Anchor.EAST,
-                Anchor.WEST,
-                Anchor.NORTH,
-                Anchor.SOUTH,
-                Anchor.NORTHEAST,
-                Anchor.NORTHWEST,
-                Anchor.SOUTHEAST,
-                Anchor.SOUTHWEST,
-            }
-        )
+        """Return the nine anchors a flat column defines."""
+        return Anchor.flat_anchors()
 
     def node_names(self) -> list[str]:
         """Return a suffix per circle, so an edge can reach each one."""
@@ -501,8 +528,8 @@ class Block(Layer):
 
     @property
     def anchors(self) -> frozenset[Anchor]:
-        """Return the anchors a flat block defines."""
-        return Dense.model_construct(name="").anchors
+        """Return the nine anchors a flat block defines."""
+        return Anchor.flat_anchors()
 
     def half_height(self, scale: float) -> float:
         """Return half the drawn height of the block."""
