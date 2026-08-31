@@ -40,11 +40,23 @@ class ConnectionStyle(str, Enum):
         that leaves the main line, since a straight arrow between two layers
         that are neither level nor stacked reads as a long diagonal across the
         drawing.
+    BYPASS
+        An arrow that steps out to one side, runs past whatever is in the way,
+        and comes back in. This is the shape of a residual connection around a
+        sublayer. An elbow cannot draw one, because going around something
+        takes two turns and an elbow makes one.
+    FULL
+        A thin line from every node of one layer to every node of the next,
+        with no arrowhead. This is how a fully connected layer is drawn. Both
+        layers must be drawn as nodes; see
+        :meth:`~synaplot.core.base.Layer.node_names`.
     """
 
     FORWARD = "forward"
     SKIP = "skip"
     ELBOW = "elbow"
+    BYPASS = "bypass"
+    FULL = "full"
 
 
 class Bend(str, Enum):
@@ -79,6 +91,9 @@ class Connection(BaseModel):
         height. Only a skip arrow uses it.
     bend
         Which way an elbow arrow turns. Only an elbow arrow uses it.
+    clearance
+        How far a bypass arrow steps out before running past. Only a bypass
+        arrow uses it.
 
     Examples
     --------
@@ -95,6 +110,7 @@ class Connection(BaseModel):
     target_anchor: Anchor | None = None
     height: float = 1.25
     bend: Bend = Bend.ACROSS_THEN_DOWN
+    clearance: float = 1.5
 
 
 class Diagram(BaseModel):

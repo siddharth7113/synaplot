@@ -12,9 +12,11 @@ from synaplot.core.diagram import Connection, ConnectionStyle, Diagram
 from synaplot.core.geometry import Anchor, Attach, Offset, Scale, Size
 from synaplot.core.theme import Theme
 from synaplot.layers import (
+    Block,
     Concat,
     Conv,
     ConvRelu,
+    Dense,
     Input,
     Pool,
     Softmax,
@@ -28,11 +30,13 @@ __version__ = "0.0.1a0"
 __all__ = [
     "Anchor",
     "Attach",
+    "Block",
     "Concat",
     "Connection",
     "ConnectionStyle",
     "Conv",
     "ConvRelu",
+    "Dense",
     "Diagram",
     "Input",
     "Offset",

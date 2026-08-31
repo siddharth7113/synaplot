@@ -44,7 +44,7 @@ class BoxLayer(Layer):
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options common to every box layer."""
         return {
-            "fill": f"\\{color_macro(self.role)}",
+            "fill": self.fill_colour(context, self.role),
             "opacity": str(self.opacity),
             "height": str(self.size.height),
             "width": self.size.width_to_tikz(),
@@ -199,7 +199,7 @@ class Ball(Layer):
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this sphere."""
         return {
-            "fill": f"\\{color_macro(self.role)}",
+            "fill": self.fill_colour(context, self.role),
             "opacity": str(self.opacity),
             "radius": str(self.radius),
             "logo": self.symbol,
@@ -266,12 +266,141 @@ class Input(Layer):
         )
 
 
+class Dense(Layer):
+    """A fully connected layer, drawn as a column of circles.
+
+    This is how a plain neural network is usually shown. A wide layer would be
+    unreadable with one circle per unit, so ``nodes`` sets how many to draw and
+    ``break_after`` marks where the rest were left out.
+
+    Parameters
+    ----------
+    units
+        How many units the layer really has. Written under the layer when no
+        caption is given.
+    nodes
+        How many circles to draw.
+    break_after
+        Draw a vertical ellipsis after this circle, standing for the units not
+        drawn. ``None`` draws none.
+    radius
+        Radius of each circle, in TikZ units.
+    spacing
+        Distance between the centres of two circles, in TikZ units.
+    opacity
+        How opaque the fill is, from 0 to 1.
+    """
+
+    kind: Literal["dense"] = "dense"
+    role: ClassVar[str] = "fc"
+    pic: ClassVar[str] = "NodeLayer"
+
+    units: int | None = None
+    nodes: int = Field(default=4, ge=1)
+    break_after: int | None = None
+    radius: float = 1.6
+    spacing: float = 5.0
+    opacity: float = Field(default=0.7, ge=0, le=1)
+
+    @property
+    def anchors(self) -> frozenset[Anchor]:
+        """Return the anchors a flat column defines."""
+        return frozenset(
+            {
+                Anchor.ANCHOR,
+                Anchor.EAST,
+                Anchor.WEST,
+                Anchor.NORTH,
+                Anchor.SOUTH,
+                Anchor.NORTHEAST,
+                Anchor.NORTHWEST,
+                Anchor.SOUTHEAST,
+                Anchor.SOUTHWEST,
+            }
+        )
+
+    def node_names(self) -> list[str]:
+        """Return a suffix per circle, so an edge can reach each one."""
+        return [str(index) for index in range(1, self.nodes + 1)]
+
+    def half_height(self, scale: float) -> float:
+        """Return half the height of the column, including the outer circles."""
+        return ((self.nodes - 1) * self.spacing / 2 + self.radius) * scale
+
+    def pic_options(self, context: DrawContext) -> dict[str, str]:
+        """Return the TikZ options for this column."""
+        options = {
+            "count": str(self.nodes),
+            "radius": str(self.radius),
+            "spacing": str(self.spacing),
+            "fill": self.fill_colour(context, self.role),
+            "opacity": str(self.opacity),
+        }
+        if self.break_after is not None:
+            options["break"] = str(self.break_after)
+        if not self.caption and self.units is not None:
+            options["caption"] = str(self.units)
+        return options
+
+
+class Block(Layer):
+    r"""A rounded rectangle holding a line of text.
+
+    This is how the parts of a transformer or a recurrent cell are usually
+    shown: a stack of named blocks rather than a row of feature maps.
+
+    Parameters
+    ----------
+    text
+        What to write inside the block. Read as LaTeX. Use ``\\\\`` to break a
+        line.
+    width, height
+        Size of the block, in TikZ units.
+    corner
+        How round the corners are, in points.
+    opacity
+        How opaque the fill is, from 0 to 1.
+    """
+
+    kind: Literal["block"] = "block"
+    role: ClassVar[str] = "conv"
+    pic: ClassVar[str] = "FlatBlock"
+
+    text: str = ""
+    width: float = 40.0
+    height: float = 12.0
+    corner: float = 3.0
+    opacity: float = Field(default=0.7, ge=0, le=1)
+
+    @property
+    def anchors(self) -> frozenset[Anchor]:
+        """Return the anchors a flat block defines."""
+        return Dense.model_construct(name="").anchors
+
+    def half_height(self, scale: float) -> float:
+        """Return half the drawn height of the block."""
+        return self.height * scale / 2
+
+    def pic_options(self, context: DrawContext) -> dict[str, str]:
+        """Return the TikZ options for this block."""
+        return {
+            "text": self.text,
+            "width": str(self.width),
+            "height": str(self.height),
+            "corner": str(self.corner),
+            "fill": self.fill_colour(context, self.role),
+            "opacity": str(self.opacity),
+        }
+
+
 __all__ = [
     "Ball",
+    "Block",
     "BoxLayer",
     "Concat",
     "Conv",
     "ConvRelu",
+    "Dense",
     "FilteredBox",
     "Input",
     "Pool",

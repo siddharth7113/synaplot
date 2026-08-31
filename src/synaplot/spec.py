@@ -47,8 +47,9 @@ def layer_types() -> dict[str, type[Layer]]:
 
     Examples
     --------
-    >>> sorted(layer_types())
-    ['concat', 'conv', 'conv_relu', 'input', 'pool', 'softmax', 'sum', 'unpool']
+    >>> kinds = layer_types()
+    >>> kinds["conv"].__name__, kinds["dense"].__name__
+    ('Conv', 'Dense')
     """
     found: dict[str, type[Layer]] = {}
     # mypy treats an abstract class as unusable where a type is expected, but
@@ -126,7 +127,7 @@ def loads(text: str) -> Diagram:
     >>> loads("layers: [{kind: attention, name: a}]")
     Traceback (most recent call last):
         ...
-    ValueError: unknown layer kind 'attention'; choose one of concat, conv, ...
+    ValueError: unknown layer kind 'attention'; choose one of ...
     """
     document = yaml.safe_load(text)
     if not isinstance(document, dict):

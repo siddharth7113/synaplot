@@ -31,8 +31,15 @@ PlotNeuralNet do not work with synaplot.
   completion or for checking a specification a program generated.
 - `synaplot convert` writes a diagram out as a specification, so a Python file
   can become YAML.
-- An elbow connection, which turns one right angle. A straight arrow between
-  two layers that are neither level nor stacked reads as a long diagonal.
+- Flat shapes, for architectures that are not stacks of feature maps. `Dense`
+  draws a layer as a column of units, the way a plain neural network is shown,
+  and `Block` draws a rounded box holding a line of text, the way the parts of
+  a transformer or a recurrent cell are shown.
+- Three more connection styles. `full` joins every unit of one layer to every
+  unit of the next. `elbow` turns one right angle, for a branch leaving the
+  main line. `bypass` steps out to one side, runs past whatever is in the way,
+  and comes back in, which is the shape of a residual connection.
+- A `fill` on any layer, overriding the colour the theme would give it.
 - Nine worked examples under `examples/`, carried over from the ones that
   shipped with PlotNeuralNet.
 

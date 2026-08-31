@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic import BaseModel
 
 from synaplot.core.geometry import Anchor, Attach
-from synaplot.core.theme import Theme
+from synaplot.core.theme import Theme, color_macro
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -53,6 +53,9 @@ class Layer(BaseModel, ABC):
     caption
         Text drawn under the layer. Read as LaTeX, so ``$3\times3$`` renders as
         math. Pass text you did not write through :func:`synaplot.escape` first.
+    fill
+        Colour to fill this layer with, overriding the theme. A TikZ colour
+        expression, such as ``"teal"`` or ``"rgb:blue,5;green,15"``.
 
     Attributes
     ----------
@@ -65,6 +68,7 @@ class Layer(BaseModel, ABC):
     name: str
     to: Attach | None = None
     caption: str = ""
+    fill: str | None = None
 
     @property
     def anchors(self) -> frozenset[Anchor]:
@@ -89,6 +93,21 @@ class Layer(BaseModel, ABC):
             Distance from the axis to the top of the layer, in TikZ units.
         """
         return 0.0
+
+    def node_names(self) -> list[str]:
+        """Return the suffixes of the separate nodes this layer draws.
+
+        A layer drawn as several nodes, such as the column of circles in a
+        plain neural network, names each one so an edge can reach it. A layer
+        drawn as one shape returns an empty list.
+
+        Returns
+        -------
+        list of str
+            One suffix per node, appended to the layer name to form a TikZ
+            coordinate.
+        """
+        return []
 
     def depth_extent(self, scale: float) -> float:
         """Return how deep this layer is drawn.
@@ -124,6 +143,29 @@ class Layer(BaseModel, ABC):
             TikZ keys and values, already formatted for LaTeX. The ``name`` and
             ``caption`` keys are added by :meth:`to_tikz`.
         """
+
+    def fill_colour(self, context: DrawContext, role: str) -> str:
+        """Return the fill for this layer, ready to put in a TikZ option.
+
+        Parameters
+        ----------
+        context
+            Diagram-wide settings, including the theme.
+        role
+            The field on the theme to fall back on when the layer sets no fill
+            of its own.
+
+        Returns
+        -------
+        str
+            The layer's own colour, or the macro holding the theme's colour for
+            that role.
+        """
+        if self.fill is not None:
+            # A colour expression holds commas and semicolons, which would end
+            # the option early, so it is braced. A macro name needs no braces.
+            return "{" + self.fill + "}"
+        return f"\\{color_macro(role)}"
 
     def to_tikz(self, context: DrawContext) -> str:
         r"""Return the TikZ that draws this layer.

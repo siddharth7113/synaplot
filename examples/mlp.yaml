@@ -1,0 +1,26 @@
+# A plain fully connected network.
+#
+# Every unit of one layer joins every unit of the next, which is what the
+# `full` connection draws.
+#
+# The hidden layers have 128 units each. Drawing 128 circles would be
+# unreadable, so `nodes` draws six and `break_after` puts a vertical ellipsis
+# in the middle standing for the ones left out. A layer small enough to draw in
+# full, like the input and output here, needs neither.
+#
+# Render with: synaplot render examples/mlp.yaml -o mlp.svg
+name: mlp
+margin: 2.5
+layers:
+  - {kind: dense, name: input, nodes: 4, caption: input (4),
+     fill: "rgb:green,5;white,5"}
+  - {kind: dense, name: hidden1, units: 128, nodes: 6, break_after: 3,
+     caption: hidden (128)}
+  - {kind: dense, name: hidden2, units: 128, nodes: 6, break_after: 3,
+     caption: hidden (128)}
+  - {kind: dense, name: output, nodes: 2, caption: output (2),
+     fill: "rgb:magenta,5;black,7"}
+connections:
+  - {source: input, target: hidden1, style: full}
+  - {source: hidden1, target: hidden2, style: full}
+  - {source: hidden2, target: output, style: full}

@@ -37,6 +37,7 @@ ARROW_STYLES = r"""
     syCopyConnection/.style={
         ultra thick, draw=EDGE, opacity=0.7,
         every node/.style={sloped,allow upside down}},
+    syEdge/.style={draw=EDGE, opacity=0.35, line width=0.2mm},
 }
 """.strip()
 
@@ -93,7 +94,9 @@ def preamble(diagram: Diagram) -> str:
     )
 
 
-def connection_to_tikz(connection: Connection, roof: float) -> str:
+def connection_to_tikz(
+    connection: Connection, roof: float, diagram: Diagram | None = None
+) -> str:
     r"""Return the TikZ that draws one arrow.
 
     Parameters
@@ -103,6 +106,9 @@ def connection_to_tikz(connection: Connection, roof: float) -> str:
     roof
         Height of the tallest layer in the diagram, measured from the axis. A
         skip arrow runs above this, so it clears every layer it passes.
+    diagram
+        The diagram being drawn. A full connection needs it to find how many
+        nodes each end has.
 
     Returns
     -------
@@ -110,6 +116,9 @@ def connection_to_tikz(connection: Connection, roof: float) -> str:
         One or more TikZ statements.
     """
     source, target = connection.source, connection.target
+    if connection.style is ConnectionStyle.FULL:
+        return _full_connection(connection, diagram)
+
     if connection.style is ConnectionStyle.FORWARD:
         start = (connection.source_anchor or Anchor.EAST).value
         end = (connection.target_anchor or Anchor.WEST).value
@@ -117,6 +126,9 @@ def connection_to_tikz(connection: Connection, roof: float) -> str:
             f"\\draw [syConnection] ({source}-{start}) "
             f"-- node {{\\syArrow}} ({target}-{end});"
         )
+
+    if connection.style is ConnectionStyle.BYPASS:
+        return _bypass(connection)
 
     if connection.style is ConnectionStyle.ELBOW:
         # TikZ turns the corner itself: -| goes across and then down, and |-
@@ -142,6 +154,70 @@ def connection_to_tikz(connection: Connection, roof: float) -> str:
             f"\\draw [syCopyConnection] ({source}-north) -- ({top_source})",
             f"    -- node {{\\syCopyArrow}} ({top_target}) -- ({target}-north);",
         ]
+    )
+
+
+#: Which way a bypass steps out, per anchor it leaves from.
+_STEP_OUT = {
+    Anchor.EAST: (1, 0),
+    Anchor.WEST: (-1, 0),
+    Anchor.NORTH: (0, 1),
+    Anchor.SOUTH: (0, -1),
+}
+
+
+def _bypass(connection: Connection) -> str:
+    """Return an arrow that steps aside, runs past, and comes back in.
+
+    Raises
+    ------
+    ValueError
+        If the arrow leaves from an anchor with no clear direction to step out
+        in, such as a corner.
+    """
+    start = connection.source_anchor or Anchor.EAST
+    end = connection.target_anchor or start
+    if start not in _STEP_OUT:
+        sides = ", ".join(anchor.value for anchor in _STEP_OUT)
+        raise ValueError(f"a bypass must leave from one of {sides}, not {start.value}")
+    across, up = _STEP_OUT[start]
+    step = (
+        f"({_format(across * connection.clearance)},"
+        f"{_format(up * connection.clearance)})"
+    )
+    # Having stepped sideways, come back on the other axis first, so the arrow
+    # meets the target square on rather than at a slant.
+    corner = "|-" if across else "-|"
+    return (
+        f"\\draw [syConnection] ({connection.source}-{start.value}) -- ++{step}\n"
+        f"    {corner} node[near end] {{\\syArrow}} ({connection.target}-{end.value});"
+    )
+
+
+def _full_connection(connection: Connection, diagram: Diagram | None) -> str:
+    """Return a line from every node of one layer to every node of the other.
+
+    Raises
+    ------
+    ValueError
+        If either layer is not drawn as separate nodes, since there would be
+        nothing for the lines to join.
+    """
+    if diagram is None:
+        raise ValueError("a full connection can only be drawn as part of a diagram")
+    source, target = connection.source, connection.target
+    starts = diagram[source].node_names()
+    ends = diagram[target].node_names()
+    for name, nodes in ((source, starts), (target, ends)):
+        if not nodes:
+            raise ValueError(
+                f"{name!r} is not drawn as separate nodes, so it cannot take a "
+                f"full connection; use a dense layer at both ends"
+            )
+    return "\n".join(
+        f"\\draw [syEdge] ({source}-{start}) -- ({target}-{end});"
+        for start in starts
+        for end in ends
     )
 
 
@@ -180,7 +256,7 @@ def diagram_to_tikz(diagram: Diagram) -> str:
         for layer, attach in diagram.placements()
     ]
     roof = max((layer.half_height(scale) for layer in diagram.layers), default=0.0)
-    blocks += [connection_to_tikz(c, roof) for c in diagram.connections]
+    blocks += [connection_to_tikz(c, roof, diagram) for c in diagram.connections]
     return "\n\n".join(blocks)
 
 

@@ -30,18 +30,13 @@ connections:
 
 
 def test_every_layer_with_a_kind_can_be_named():
+    """Checked by property rather than by a list, which would drift."""
     kinds = spec.layer_types()
-    assert set(kinds) == {
-        "concat",
-        "conv",
-        "conv_relu",
-        "input",
-        "pool",
-        "softmax",
-        "sum",
-        "unpool",
-    }
-    assert all(issubclass(cls, Layer) for cls in kinds.values())
+    for kind, cls in kinds.items():
+        assert issubclass(cls, Layer)
+        assert cls.model_fields["kind"].default == kind
+    # A few that must always be there, covering each drawing style.
+    assert {"conv", "pool", "sum", "dense", "block"} <= set(kinds)
 
 
 def test_shared_bases_are_not_offered_as_kinds():
