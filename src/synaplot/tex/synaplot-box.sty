@@ -1,0 +1,130 @@
+\ProvidesPackage{synaplot-box}[2026/08/31 synaplot Box pic]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Draws one or more concatenated 3D boxes. Used for conv, deconv, pool layers.
+%
+% Originally Box.sty from PlotNeuralNet by Haris Iqbal, MIT licensed.
+% https://github.com/HarisIqbal88/PlotNeuralNet
+%
+% Modified for synaplot:
+%   - Every stored and computed macro is prefixed \sy@ so that loading this
+%     package cannot redefine \caption, \fill, \scale, \name, \depth, \x, \y,
+%     \z or \opacity in the host document. See upstream issue #53.
+%   - Key namespace moved from /boxblock to /synaplot/box.
+%   - TikZ style and node names are prefixed so they cannot collide with the
+%     host document's own styles and coordinates.
+%   - The depth label is positioned at pos=0.5 instead of pos=0 so it centers
+%     on the depth edge instead of piling onto the width label at the corner.
+%     See upstream issues #37, #115, #122, #161, #163 and #166.
+%   - \tikzstyle (deprecated in pgf) replaced with \tikzset.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeatletter
+\tikzset{
+    Box/.pic={\tikzset{/synaplot/box/.cd,#1}
+        \tikzset{
+            sy@box/.style={
+                every edge/.append style={pic actions, densely dashed, opacity=.7},
+                fill opacity=\sy@opacity, pic actions, fill=\sy@fill},
+            sy@depthlabel/.style={pos=0.5, text width=14*\sy@z, text centered, sloped},
+            sy@captionlabel/.style={text width=15*\sy@LastEastx/\sy@scale, text centered},
+        }
+
+        \pgfmathsetmacro{\sy@y}{\sy@cubey*\sy@scale}
+        \pgfmathsetmacro{\sy@z}{\sy@cubez*\sy@scale}
+
+        %Multiple concatenated boxes
+        \foreach[count=\sy@i,%
+                 evaluate=\sy@i as \sy@xlabel using {array({\sy@boxlabels},\sy@i-1)},%
+                 evaluate=\sy@unscaledx as \sy@k using {\sy@unscaledx*\sy@scale+\sy@prev},%
+                 remember=\sy@k as \sy@prev (initially 0)]
+                 \sy@unscaledx in \sy@cubex
+        {
+            \pgfmathsetmacro{\sy@x}{\sy@unscaledx*\sy@scale}
+            \coordinate (sy@a) at (\sy@k-\sy@x , \sy@y/2 , \sy@z/2);
+            \coordinate (sy@b) at (\sy@k-\sy@x ,-\sy@y/2 , \sy@z/2);
+            \coordinate (sy@c) at (\sy@k       ,-\sy@y/2 , \sy@z/2);
+            \coordinate (sy@d) at (\sy@k       , \sy@y/2 , \sy@z/2);
+            \coordinate (sy@e) at (\sy@k       , \sy@y/2 ,-\sy@z/2);
+            \coordinate (sy@f) at (\sy@k       ,-\sy@y/2 ,-\sy@z/2);
+            \coordinate (sy@g) at (\sy@k-\sy@x ,-\sy@y/2 ,-\sy@z/2);
+            \coordinate (sy@h) at (\sy@k-\sy@x , \sy@y/2 ,-\sy@z/2);
+
+            \draw [sy@box]
+                (sy@d) -- (sy@a) -- (sy@b) -- (sy@c) -- cycle
+                (sy@d) -- (sy@a) -- (sy@h) -- (sy@e) -- cycle
+                %dotted edges
+                (sy@f) edge (sy@g)
+                (sy@b) edge (sy@g)
+                (sy@h) edge (sy@g)
+            ;
+            \path (sy@b) edge ["\sy@xlabel"',midway] (sy@c);
+
+            \xdef\sy@LastEastx{\sy@k} %\sy@k persists as \sy@LastEastx after loop
+        }%Loop ends
+        \draw [sy@box] (sy@d) -- (sy@e) -- (sy@f) -- (sy@c) -- cycle; %East face of last box
+
+        \coordinate (sy@a1) at (0 , \sy@y/2 , \sy@z/2);
+        \coordinate (sy@b1) at (0 ,-\sy@y/2 , \sy@z/2);
+
+        \path (sy@c) edge ["\small\sy@zlabel"',sy@depthlabel] (sy@f); %depth label
+        \path (sy@b1) edge ["\sy@ylabel",midway] (sy@a1);  %height label
+
+        \path (\sy@LastEastx/2,-\sy@y/2,+\sy@z/2) + (0,-25pt) coordinate (sy@cap)
+        edge ["\textcolor{black}{ \bf \sy@caption}"',sy@captionlabel] (sy@cap) ; %Block caption
+
+        %Define nodes to be used outside on the pic object
+        \coordinate (\sy@name-west)   at (0,0,0) ;
+        \coordinate (\sy@name-east)   at (\sy@LastEastx, 0,0) ;
+        \coordinate (\sy@name-north)  at (\sy@LastEastx/2,\sy@y/2,0);
+        \coordinate (\sy@name-south)  at (\sy@LastEastx/2,-\sy@y/2,0);
+        \coordinate (\sy@name-anchor) at (\sy@LastEastx/2, 0,0) ;
+
+        \coordinate (\sy@name-near) at (\sy@LastEastx/2,0,\sy@z/2);
+        \coordinate (\sy@name-far)  at (\sy@LastEastx/2,0,-\sy@z/2);
+
+        \coordinate (\sy@name-nearwest) at (0,0,\sy@z/2);
+        \coordinate (\sy@name-neareast) at (\sy@LastEastx,0,\sy@z/2);
+        \coordinate (\sy@name-farwest)  at (0,0,-\sy@z/2);
+        \coordinate (\sy@name-fareast)  at (\sy@LastEastx,0,-\sy@z/2);
+
+        \coordinate (\sy@name-northeast) at (\sy@name-north-|\sy@name-east);
+        \coordinate (\sy@name-northwest) at (\sy@name-north-|\sy@name-west);
+        \coordinate (\sy@name-southeast) at (\sy@name-south-|\sy@name-east);
+        \coordinate (\sy@name-southwest) at (\sy@name-south-|\sy@name-west);
+
+        \coordinate (\sy@name-nearnortheast)  at (\sy@LastEastx, \sy@y/2, \sy@z/2);
+        \coordinate (\sy@name-farnortheast)   at (\sy@LastEastx, \sy@y/2,-\sy@z/2);
+        \coordinate (\sy@name-nearsoutheast)  at (\sy@LastEastx,-\sy@y/2, \sy@z/2);
+        \coordinate (\sy@name-farsoutheast)   at (\sy@LastEastx,-\sy@y/2,-\sy@z/2);
+
+        \coordinate (\sy@name-nearnorthwest)  at (0, \sy@y/2, \sy@z/2);
+        \coordinate (\sy@name-farnorthwest)   at (0, \sy@y/2,-\sy@z/2);
+        \coordinate (\sy@name-nearsouthwest)  at (0,-\sy@y/2, \sy@z/2);
+        \coordinate (\sy@name-farsouthwest)   at (0,-\sy@y/2,-\sy@z/2);
+
+    },
+    /synaplot/box/.search also={/tikz},
+    /synaplot/box/.cd,
+    width/.store        in=\sy@cubex,
+    height/.store       in=\sy@cubey,
+    depth/.store        in=\sy@cubez,
+    scale/.store        in=\sy@scale,
+    xlabel/.store       in=\sy@boxlabels,
+    ylabel/.store       in=\sy@ylabel,
+    zlabel/.store       in=\sy@zlabel,
+    caption/.store      in=\sy@caption,
+    name/.store         in=\sy@name,
+    fill/.store         in=\sy@fill,
+    opacity/.store      in=\sy@opacity,
+    fill={rgb:red,5;green,5;blue,5;white,15},
+    opacity=0.4,
+    width=2,
+    height=13,
+    depth=15,
+    scale=.2,
+    xlabel={{"","","","","","","","","",""}},
+    ylabel=,
+    zlabel=,
+    caption=,
+    name=,
+}
+\makeatother

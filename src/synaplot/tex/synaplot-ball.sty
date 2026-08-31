@@ -1,0 +1,50 @@
+\ProvidesPackage{synaplot-ball}[2026/08/31 synaplot Ball pic]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Draws a shaded sphere. Used for elementwise and reduction operations such as
+% addition and concatenation.
+%
+% Originally Ball.sty from PlotNeuralNet by Haris Iqbal, MIT licensed.
+% https://github.com/HarisIqbal88/PlotNeuralNet
+%
+% Modified for synaplot: see the header of synaplot-box.sty for the full list.
+% Note that upstream stores the radius in \r, which is LaTeX's ring accent
+% command. That macro is now \sy@radiusscaled.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeatletter
+\tikzset{
+    Ball/.pic={\tikzset{/synaplot/ball/.cd,#1}
+
+        \pgfmathsetmacro{\sy@radiusscaled}{\sy@radius*\sy@scale}
+
+        \shade[ball color=\sy@fill,opacity=\sy@opacity] (0,0,0) circle (\sy@radiusscaled);
+        \draw (0,0,0) circle [radius=\sy@radiusscaled]
+            node[scale=4*\sy@radiusscaled] {\sy@logo};
+
+        \coordinate (\sy@name-anchor) at ( 0                 , 0                  , 0) ;
+        \coordinate (\sy@name-east)   at ( \sy@radiusscaled  , 0                  , 0) ;
+        \coordinate (\sy@name-west)   at (-\sy@radiusscaled  , 0                  , 0) ;
+        \coordinate (\sy@name-north)  at ( 0                 , \sy@radiusscaled   , 0) ;
+        \coordinate (\sy@name-south)  at ( 0                 , -\sy@radiusscaled  , 0) ;
+
+        \path (\sy@name-south) + (0,-20pt) coordinate (sy@captionnode)
+        edge ["\textcolor{black}{\bf \sy@caption}"'] (sy@captionnode); %Ball caption
+
+    },
+    /synaplot/ball/.search also={/tikz},
+    /synaplot/ball/.cd,
+    radius/.store       in=\sy@radius,
+    scale/.store        in=\sy@scale,
+    caption/.store      in=\sy@caption,
+    name/.store         in=\sy@name,
+    fill/.store         in=\sy@fill,
+    logo/.store         in=\sy@logo,
+    opacity/.store      in=\sy@opacity,
+    logo=$\Sigma$,
+    fill=green,
+    opacity=0.10,
+    scale=0.2,
+    radius=0.5,
+    caption=,
+    name=,
+}
+\makeatother
