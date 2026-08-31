@@ -1,13 +1,13 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/logo-dark.png">
-    <img alt="synaplot: render neural network architectures"
-         src="docs/_static/logo.png" width="440">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/wordmark-dark.png">
+    <img alt="synaplot" src="docs/_static/wordmark.png" width="360">
   </picture>
 </p>
 
 <p align="center">
-  Draw neural network architecture diagrams with LaTeX and TikZ.
+  Draw neural network architecture diagrams with LaTeX and TikZ,
+  from Python or the command line.
 </p>
 
 <p align="center">
