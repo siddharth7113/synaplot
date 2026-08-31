@@ -16,8 +16,6 @@ from synaplot import __version__, spec
 from synaplot.core.diagram import Diagram
 from synaplot.render import Format, ToolchainError, converters, renderers, toolchain
 
-SPEC_SUFFIXES = {".yaml", ".yml", ".json"}
-
 app = typer.Typer(
     name="synaplot",
     help="Draw neural network architecture diagrams with LaTeX and TikZ.",
@@ -35,9 +33,10 @@ def _fail(message: str) -> NoReturn:
 def _load(source: Path) -> Diagram:
     """Return the diagram a file describes.
 
-    A YAML or JSON file is read as a specification. A Python file is run, and
-    the ``Diagram`` it leaves in a module-level variable is returned. A Python
-    file that builds several must name the one to draw ``diagram``.
+    A Python file is run, and the ``Diagram`` it leaves in a module-level
+    variable is returned; a file that builds several must name the one to draw
+    ``diagram``. Any other file is read as a specification, which is parsed as
+    YAML, so JSON is read the same way.
 
     Parameters
     ----------
@@ -52,7 +51,7 @@ def _load(source: Path) -> Diagram:
     if not source.is_file():
         _fail(f"{source} does not exist")
 
-    if source.suffix.lower() in SPEC_SUFFIXES:
+    if source.suffix.lower() != ".py":
         try:
             return spec.load(source)
         except (ValueError, TypeError, yaml.YAMLError) as error:
