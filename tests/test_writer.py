@@ -153,11 +153,30 @@ def test_two_bypasses_can_leave_one_layer_in_different_lanes():
     diagram.connect("a", "b", style="bypass", source_anchor="east", clearance=2)
     diagram.connect("b", "c", style="bypass", source_anchor="northeast", clearance=3.4)
     first, second = (connection_to_tikz(c, 0.0, diagram) for c in diagram.connections)
-    assert "(a-east) -- ++(2,0)" in first
+    assert "(a-east) -- ++(2,0,0)" in first
     # The second leaves a corner, so the two do not share the run out, and it
     # comes back in on the side that corner names.
-    assert "(b-northeast) -- ++(3.4,0)" in second
+    assert "(b-northeast) -- ++(3.4,0,0)" in second
     assert "(c-east)" in second
+
+
+def test_a_bypass_can_step_along_the_depth_axis():
+    diagram = sp.Diagram(name="depth").add(
+        sp.Conv(name="conv1"), sp.Conv(name="side1", to=sp.Attach(layer="conv1"))
+    )
+    diagram.connect(
+        "conv1",
+        "side1",
+        style="bypass",
+        source_anchor="near",
+        target_anchor="west",
+        clearance=6,
+    )
+    arrow = connection_to_tikz(diagram.connections[0], 0.0, diagram)
+    assert "(conv1-near) -- ++(0,0,6)" in arrow
+    # Depth is drawn across the page as well as down it, so there is no square
+    # turn to make; the arrow runs straight to the target.
+    assert "-- node[near end] {\\syArrow} (side1-west)" in arrow
 
 
 def test_the_document_carries_its_own_styles():

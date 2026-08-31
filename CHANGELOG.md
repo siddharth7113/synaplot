@@ -58,7 +58,9 @@ PlotNeuralNet do not work with synaplot.
 - The lines of a `full` connection pass behind the units they join rather than
   across them.
 - A `bypass` can leave from a corner as well as a side, so two of them can
-  leave the same layer without overlapping.
+  leave the same layer without overlapping. It can also step out along the
+  depth axis, towards the reader or away from them, which is how several arrows
+  leaving one line reach a row of layers of their own.
 - `Dense` leaves a gap at its break and draws the ellipsis to scale with its
   circles. The ellipsis used to be text at document size in a gap too small
   for it.

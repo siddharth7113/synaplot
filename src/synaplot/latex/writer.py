@@ -184,25 +184,32 @@ def _arrowhead(connection: Connection, diagram: Diagram | None) -> tuple[str, st
 
 #: Which way a bypass steps out, per anchor it leaves from.
 _STEP_OUT = {
-    Anchor.EAST: (1, 0),
-    Anchor.WEST: (-1, 0),
-    Anchor.NORTH: (0, 1),
-    Anchor.SOUTH: (0, -1),
+    Anchor.EAST: (1, 0, 0),
+    Anchor.WEST: (-1, 0, 0),
+    Anchor.NORTH: (0, 1, 0),
+    Anchor.SOUTH: (0, -1, 0),
+    # Stepping out along the depth axis moves the arrow towards the reader or
+    # away from them, which is where a drawing of feature maps has room. It is
+    # how several arrows leaving one line reach a row of layers of their own.
+    Anchor.NEAR: (0, 0, 1),
+    Anchor.FAR: (0, 0, -1),
     # A corner steps out to the side it names. Two residual arrows can then
     # leave the same layer, one from the corner and one from the side, without
     # the second running back down the line the first came in on.
-    Anchor.NORTHEAST: (1, 0),
-    Anchor.SOUTHEAST: (1, 0),
-    Anchor.NORTHWEST: (-1, 0),
-    Anchor.SOUTHWEST: (-1, 0),
+    Anchor.NORTHEAST: (1, 0, 0),
+    Anchor.SOUTHEAST: (1, 0, 0),
+    Anchor.NORTHWEST: (-1, 0, 0),
+    Anchor.SOUTHWEST: (-1, 0, 0),
 }
 
-#: Which side a bypass comes back in on, per direction it stepped out in.
+#: Which face a bypass comes back in on, per direction it stepped out in.
 _SIDE = {
-    (1, 0): Anchor.EAST,
-    (-1, 0): Anchor.WEST,
-    (0, 1): Anchor.NORTH,
-    (0, -1): Anchor.SOUTH,
+    (1, 0, 0): Anchor.EAST,
+    (-1, 0, 0): Anchor.WEST,
+    (0, 1, 0): Anchor.NORTH,
+    (0, -1, 0): Anchor.SOUTH,
+    (0, 0, 1): Anchor.NEAR,
+    (0, 0, -1): Anchor.FAR,
 }
 
 
@@ -219,19 +226,19 @@ def _bypass(connection: Connection, line: str, head: str) -> str:
     if start not in _STEP_OUT:
         sides = ", ".join(anchor.value for anchor in _STEP_OUT)
         raise ValueError(f"a bypass must leave from one of {sides}, not {start.value}")
-    across, up = _STEP_OUT[start]
+    across, up, out = _STEP_OUT[start]
     # An arrow that left from a corner comes back in on the side that corner
     # names, because the corner only says where to leave from.
-    end = connection.target_anchor or _SIDE[across, up]
-    step = (
-        f"({_format(across * connection.clearance)},"
-        f"{_format(up * connection.clearance)})"
-    )
+    end = connection.target_anchor or _SIDE[across, up, out]
+    step = ",".join(_format(way * connection.clearance) for way in (across, up, out))
     # Having stepped sideways, come back on the other axis first, so the arrow
-    # meets the target square on rather than at a slant.
-    corner = "|-" if across else "-|"
+    # meets the target square on rather than at a slant. An arrow that stepped
+    # along the depth axis runs straight to the target instead: a square turn
+    # is a turn on the page, and depth is drawn across the page as well as
+    # down it.
+    corner = "--" if out else "|-" if across else "-|"
     return (
-        f"\\draw [{line}] ({connection.source}-{start.value}) -- ++{step}\n"
+        f"\\draw [{line}] ({connection.source}-{start.value}) -- ++({step})\n"
         f"    {corner}{head} ({connection.target}-{end.value});"
     )
 
