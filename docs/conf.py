@@ -40,6 +40,11 @@ html_title = "synaplot"
 html_static_path = ["_static"]
 html_theme_options = {
     "github_url": "https://github.com/siddharth7113/synaplot",
+    "logo": {
+        "image_light": "_static/wordmark.svg",
+        "image_dark": "_static/wordmark-dark.svg",
+        "alt_text": "synaplot",
+    },
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "show_prev_next": False,
 }

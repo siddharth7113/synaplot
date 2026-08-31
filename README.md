@@ -1,4 +1,10 @@
-<h1 align="center">synaplot</h1>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/logo-dark.png">
+    <img alt="synaplot: render neural network architectures"
+         src="docs/_static/logo.png" width="440">
+  </picture>
+</p>
 
 <p align="center">
   Draw neural network architecture diagrams with LaTeX and TikZ.
