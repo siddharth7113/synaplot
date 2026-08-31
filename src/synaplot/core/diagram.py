@@ -13,6 +13,7 @@ from synaplot.core.theme import Theme
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
 
 class ConnectionStyle(str, Enum):
@@ -265,3 +266,31 @@ class Diagram(BaseModel):
         from synaplot.latex.writer import diagram_to_tex
 
         return diagram_to_tex(self, standalone=standalone)
+
+    def save(self, path: str | Path, *, dpi: int = 300) -> Path:
+        """Write this diagram to a file.
+
+        The format comes from the file's suffix: ``.tex``, ``.pdf``, ``.svg``,
+        or ``.png``.
+
+        Parameters
+        ----------
+        path
+            Where to write the diagram.
+        dpi
+            Resolution for PNG output.
+
+        Returns
+        -------
+        Path
+            The file that was written.
+
+        Raises
+        ------
+        ToolchainError
+            If no installed program can produce that format. The message names
+            what to install.
+        """
+        from synaplot.render import render
+
+        return render(self, path, dpi=dpi)

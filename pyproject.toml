@@ -51,6 +51,9 @@ Source = "https://github.com/siddharth7113/synaplot"
 Issues = "https://github.com/siddharth7113/synaplot/issues"
 Changelog = "https://github.com/siddharth7113/synaplot/blob/main/CHANGELOG.md"
 
+[project.scripts]
+synaplot = "synaplot.cli:app"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
