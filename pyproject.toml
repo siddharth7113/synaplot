@@ -129,6 +129,8 @@ ignore_missing_imports = true
 testpaths = ["tests", "src/synaplot"]
 addopts = "--strict-markers --strict-config --doctest-modules"
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+# A warning we do not act on becomes a break later, so treat them as errors.
+filterwarnings = ["error"]
 markers = [
     "render: test that shells out to a LaTeX toolchain (set SYNAPLOT_RENDER_TESTS=1)",
 ]

@@ -1,0 +1,32 @@
+# U-Net, after Ronneberger, Fischer and Brox (2015).
+# The skip connections carry encoder features across to the decoder.
+# Render with: synaplot render examples/unet.yaml -o unet.svg
+name: unet
+layers:
+  - {kind: conv_relu, name: enc1, filters: [64, 64], spatial: H,
+     size: {width: [2.5, 2.5], height: 40, depth: 40}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 34, depth: 34}}
+  - {kind: conv_relu, name: enc2, filters: [128, 128], spatial: H/2,
+     size: {width: [2.5, 2.5], height: 32, depth: 32}}
+  - {kind: pool, name: pool2, size: {width: 1, height: 26, depth: 26}}
+  - {kind: conv_relu, name: bottleneck, caption: bottleneck, filters: [256, 256], spatial: H/4,
+     size: {width: [2.5, 2.5], height: 24, depth: 24}}
+  - {kind: unpool, name: up2, size: {width: 1, height: 32, depth: 32}}
+  - {kind: conv_relu, name: dec2, filters: [128, 128], spatial: H/2,
+     size: {width: [2.5, 2.5], height: 32, depth: 32}}
+  - {kind: unpool, name: up1, size: {width: 1, height: 40, depth: 40}}
+  - {kind: conv_relu, name: dec1, filters: [64, 64], spatial: H,
+     size: {width: [2.5, 2.5], height: 40, depth: 40}}
+  - {kind: softmax, name: out, caption: softmax, classes: 2}
+connections:
+  - {source: enc1, target: pool1}
+  - {source: pool1, target: enc2}
+  - {source: enc2, target: pool2}
+  - {source: pool2, target: bottleneck}
+  - {source: bottleneck, target: up2}
+  - {source: up2, target: dec2}
+  - {source: dec2, target: up1}
+  - {source: up1, target: dec1}
+  - {source: dec1, target: out}
+  - {source: enc2, target: dec2, style: skip}
+  - {source: enc1, target: dec1, style: skip, height: 1.6}

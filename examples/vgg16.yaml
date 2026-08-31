@@ -1,0 +1,43 @@
+# VGG16, after Simonyan and Zisserman (2014).
+# Render with: synaplot render examples/vgg16.yaml -o vgg16.svg
+name: vgg16
+layers:
+  - {kind: conv_relu, name: conv1, caption: conv1, filters: [64, 64], spatial: 224,
+     size: {width: [2, 2], height: 40, depth: 40}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 35, depth: 35}}
+
+  - {kind: conv_relu, name: conv2, caption: conv2, filters: [128, 128], spatial: 112,
+     size: {width: [3, 3], height: 35, depth: 35}}
+  - {kind: pool, name: pool2, size: {width: 1, height: 30, depth: 30}}
+
+  - {kind: conv_relu, name: conv3, caption: conv3, filters: [256, 256, 256], spatial: 56,
+     size: {width: [4, 4, 4], height: 30, depth: 30}}
+  - {kind: pool, name: pool3, size: {width: 1, height: 23, depth: 23}}
+
+  - {kind: conv_relu, name: conv4, caption: conv4, filters: [512, 512, 512], spatial: 28,
+     size: {width: [7, 7, 7], height: 23, depth: 23}}
+  - {kind: pool, name: pool4, size: {width: 1, height: 15, depth: 15}}
+
+  - {kind: conv_relu, name: conv5, caption: conv5, filters: [512, 512, 512], spatial: 14,
+     size: {width: [7, 7, 7], height: 15, depth: 15}}
+  - {kind: pool, name: pool5, size: {width: 1, height: 10, depth: 10}}
+
+  - {kind: conv_relu, name: fc6, caption: fc6, filters: 4096, spatial: 1,
+     size: {width: 3, height: 3, depth: 25}}
+  - {kind: conv_relu, name: fc7, caption: fc7, filters: 4096, spatial: 1,
+     size: {width: 3, height: 3, depth: 25}}
+  - {kind: softmax, name: out, caption: fc8 + softmax, classes: 1000,
+     size: {width: 3, height: 3, depth: 25}}
+connections:
+  - {source: conv1, target: pool1}
+  - {source: pool1, target: conv2}
+  - {source: conv2, target: pool2}
+  - {source: pool2, target: conv3}
+  - {source: conv3, target: pool3}
+  - {source: pool3, target: conv4}
+  - {source: conv4, target: pool4}
+  - {source: pool4, target: conv5}
+  - {source: conv5, target: pool5}
+  - {source: pool5, target: fc6}
+  - {source: fc6, target: fc7}
+  - {source: fc7, target: out}

@@ -1,0 +1,22 @@
+# LeNet-5, after LeCun et al. (1998).
+# Render with: synaplot render examples/lenet.yaml -o lenet.svg
+name: lenet
+layers:
+  - {kind: conv, name: conv1, caption: conv1, filters: 6, spatial: 28,
+     size: {width: 2, height: 40, depth: 40}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 32, depth: 32}}
+  - {kind: conv, name: conv2, caption: conv2, filters: 16, spatial: 10,
+     size: {width: 3, height: 32, depth: 32}}
+  - {kind: pool, name: pool2, size: {width: 1, height: 20, depth: 20}}
+  - {kind: conv_relu, name: fc1, caption: fc1, filters: 120, spatial: 1,
+     size: {width: 3, height: 3, depth: 25}}
+  - {kind: conv_relu, name: fc2, caption: fc2, filters: 84, spatial: 1,
+     size: {width: 3, height: 3, depth: 25}}
+  - {kind: softmax, name: out, caption: softmax, classes: 10}
+connections:
+  - {source: conv1, target: pool1}
+  - {source: pool1, target: conv2}
+  - {source: conv2, target: pool2}
+  - {source: pool2, target: fc1}
+  - {source: fc1, target: fc2}
+  - {source: fc2, target: out}

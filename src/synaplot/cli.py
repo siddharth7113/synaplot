@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import platform
 import runpy
 import sys
@@ -9,10 +10,13 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import yaml
 
-from synaplot import __version__
+from synaplot import __version__, spec
 from synaplot.core.diagram import Diagram
 from synaplot.render import Format, ToolchainError, converters, renderers, toolchain
+
+SPEC_SUFFIXES = {".yaml", ".yml", ".json"}
 
 app = typer.Typer(
     name="synaplot",
@@ -29,24 +33,31 @@ def _fail(message: str) -> None:
 
 
 def _load(source: Path) -> Diagram:
-    """Return the diagram a Python file builds.
+    """Return the diagram a file describes.
 
-    The file is run, and the ``Diagram`` it leaves in a module-level variable is
-    returned. A file that defines several is ambiguous, so it must name the one
-    to draw ``diagram``.
+    A YAML or JSON file is read as a specification. A Python file is run, and
+    the ``Diagram`` it leaves in a module-level variable is returned. A Python
+    file that builds several must name the one to draw ``diagram``.
 
     Parameters
     ----------
     source
-        The Python file to run.
+        The file to read.
 
     Returns
     -------
     Diagram
-        The diagram the file built.
+        The diagram the file describes.
     """
     if not source.is_file():
         _fail(f"{source} does not exist")
+
+    if source.suffix.lower() in SPEC_SUFFIXES:
+        try:
+            return spec.load(source)
+        except (ValueError, TypeError, yaml.YAMLError) as error:
+            _fail(f"{source}: {error}")
+
     sys.path.insert(0, str(source.parent.resolve()))
     try:
         namespace = runpy.run_path(str(source))
@@ -71,7 +82,8 @@ def _load(source: Path) -> Diagram:
 @app.command()
 def render(
     source: Annotated[
-        Path, typer.Argument(help="A Python file that builds a diagram.")
+        Path,
+        typer.Argument(help="A .yaml, .json, or .py file describing a diagram."),
     ],
     output: Annotated[
         Path,
@@ -131,6 +143,44 @@ def doctor() -> None:
             "installation and downloads what a document asks for.",
             fg=typer.colors.YELLOW,
         )
+
+
+@app.command()
+def convert(
+    source: Annotated[Path, typer.Argument(help="The diagram to read.")],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Where to write the specification."),
+    ],
+) -> None:
+    """Write a diagram out as a specification.
+
+    Use it to turn a Python file into a .yaml or .json specification, or to
+    convert between the two.
+    """
+    diagram = _load(source)
+    written = spec.dump(diagram, output)
+    typer.secho(f"wrote {written}", fg=typer.colors.GREEN)
+
+
+@app.command()
+def schema(
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write to a file instead of stdout."),
+    ] = None,
+) -> None:
+    """Print the JSON Schema for a specification.
+
+    Point an editor at it to get completion and checking while writing a
+    specification by hand, or give it to a program that generates one.
+    """
+    document = json.dumps(spec.schema(), indent=2)
+    if output is None:
+        typer.echo(document)
+        return
+    output.write_text(document + "\n", encoding="utf-8")
+    typer.secho(f"wrote {output}", fg=typer.colors.GREEN)
 
 
 @app.command()

@@ -7,7 +7,7 @@ looks, and are usually chosen so a shrinking feature map is drawn smaller.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -52,8 +52,8 @@ class BoxLayer(Layer):
         }
 
 
-class Conv(BoxLayer):
-    r"""A convolution, drawn as a box.
+class FilteredBox(BoxLayer):
+    r"""Base for a box labelled with its filter count and feature map size.
 
     Parameters
     ----------
@@ -73,7 +73,7 @@ class Conv(BoxLayer):
     spatial: str | int | None = None
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
-        """Return the TikZ options for this convolution."""
+        """Return the TikZ options, including the filter and size labels."""
         options = super().pic_options(context)
         filters = self.filters if isinstance(self.filters, list) else [self.filters]
         options["xlabel"] = label_array(
@@ -84,8 +84,14 @@ class Conv(BoxLayer):
         return options
 
 
-class ConvRelu(Conv):
-    r"""A convolution followed by an activation, drawn as a banded box.
+class Conv(FilteredBox):
+    """A convolution, drawn as a box."""
+
+    kind: Literal["conv"] = "conv"
+
+
+class ConvRelu(FilteredBox):
+    """A convolution followed by an activation, drawn as a banded box.
 
     The band on the right of each box stands for the activation.
 
@@ -93,9 +99,9 @@ class ConvRelu(Conv):
     ----------
     band_opacity
         How opaque the band is, from 0 to 1.
-
     """
 
+    kind: Literal["conv_relu"] = "conv_relu"
     pic: ClassVar[str] = "RightBandedBox"
 
     band_opacity: float = Field(default=0.6, ge=0, le=1)
@@ -108,18 +114,24 @@ class ConvRelu(Conv):
         return options
 
 
-class Pool(BoxLayer):
-    r"""A pooling layer, drawn as a short box."""
-
-    role: ClassVar[str] = "pool"
+class Resampling(BoxLayer):
+    """Base for a layer that changes the size of a feature map."""
 
     size: Size = Size(width=1, height=32, depth=32)
     opacity: float = Field(default=0.5, ge=0, le=1)
 
 
-class Unpool(Pool):
-    """An upsampling layer, drawn as a short box in the unpool color."""
+class Pool(Resampling):
+    """A pooling layer, drawn as a short box."""
 
+    kind: Literal["pool"] = "pool"
+    role: ClassVar[str] = "pool"
+
+
+class Unpool(Resampling):
+    """An upsampling layer, drawn as a short box."""
+
+    kind: Literal["unpool"] = "unpool"
     role: ClassVar[str] = "unpool"
 
 
@@ -133,6 +145,7 @@ class Softmax(BoxLayer):
 
     """
 
+    kind: Literal["softmax"] = "softmax"
     role: ClassVar[str] = "softmax"
 
     size: Size = Size(width=1.5, height=3, depth=25)
@@ -196,6 +209,7 @@ class Ball(Layer):
 class Sum(Ball):
     r"""An elementwise sum, drawn as a sphere marked with a plus."""
 
+    kind: Literal["sum"] = "sum"
     role: ClassVar[str] = "sum"
     symbol: ClassVar[str] = "$+$"
 
@@ -203,6 +217,7 @@ class Sum(Ball):
 class Concat(Ball):
     r"""A concatenation, drawn as a sphere marked with two bars."""
 
+    kind: Literal["concat"] = "concat"
     role: ClassVar[str] = "concat"
     symbol: ClassVar[str] = "$||$"
 
@@ -221,6 +236,8 @@ class Input(Layer):
     """
 
     pic: ClassVar[str] = ""
+
+    kind: Literal["input"] = "input"
 
     path: str
     width: float = 8.0
@@ -255,8 +272,10 @@ __all__ = [
     "Concat",
     "Conv",
     "ConvRelu",
+    "FilteredBox",
     "Input",
     "Pool",
+    "Resampling",
     "Softmax",
     "Sum",
     "Unpool",

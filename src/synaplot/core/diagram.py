@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, field_validator
 
 from synaplot.core.base import Layer
 from synaplot.core.geometry import Anchor, Attach, Offset, Scale
@@ -35,10 +35,31 @@ class ConnectionStyle(str, Enum):
         An arrow that leaves the top of the source, runs above the diagram, and
         comes down onto the target. Used where a straight arrow would cut
         through the layers in between.
+    ELBOW
+        An arrow that turns one right angle on its way. Use it for a branch
+        that leaves the main line, since a straight arrow between two layers
+        that are neither level nor stacked reads as a long diagonal across the
+        drawing.
     """
 
     FORWARD = "forward"
     SKIP = "skip"
+    ELBOW = "elbow"
+
+
+class Bend(str, Enum):
+    """Which way an elbow turns.
+
+    Attributes
+    ----------
+    ACROSS_THEN_DOWN
+        Travel horizontally out of the source, then vertically into the target.
+    DOWN_THEN_ACROSS
+        Travel vertically out of the source, then horizontally into the target.
+    """
+
+    ACROSS_THEN_DOWN = "across_then_down"
+    DOWN_THEN_ACROSS = "down_then_across"
 
 
 class Connection(BaseModel):
@@ -55,7 +76,9 @@ class Connection(BaseModel):
         style choose: a forward arrow runs east to west.
     height
         How far above the layers a skip arrow runs, as a fraction of the layer
-        height. A forward arrow ignores it.
+        height. Only a skip arrow uses it.
+    bend
+        Which way an elbow arrow turns. Only an elbow arrow uses it.
 
     Examples
     --------
@@ -71,6 +94,7 @@ class Connection(BaseModel):
     source_anchor: Anchor | None = None
     target_anchor: Anchor | None = None
     height: float = 1.25
+    bend: Bend = Bend.ACROSS_THEN_DOWN
 
 
 class Diagram(BaseModel):
@@ -129,7 +153,10 @@ class Diagram(BaseModel):
     scale: Scale = Field(default_factory=Scale)
     gap: float | None = None
     margin: float = 1.0
-    layers: list[Layer] = Field(default_factory=list)
+    # SerializeAsAny keeps each layer's own fields. Without it pydantic
+    # writes only what the Layer base declares, dropping filters, sizes,
+    # and everything else a specific layer adds.
+    layers: list[SerializeAsAny[Layer]] = Field(default_factory=list)
     connections: list[Connection] = Field(default_factory=list)
 
     @field_validator("layers")

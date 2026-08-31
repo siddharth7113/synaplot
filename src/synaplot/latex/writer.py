@@ -7,7 +7,7 @@ from importlib.resources import files
 from typing import TYPE_CHECKING
 
 from synaplot.core.base import DrawContext
-from synaplot.core.diagram import ConnectionStyle
+from synaplot.core.diagram import Bend, ConnectionStyle
 from synaplot.core.geometry import Anchor
 from synaplot.core.theme import color_macro
 
@@ -116,6 +116,17 @@ def connection_to_tikz(connection: Connection, roof: float) -> str:
         return (
             f"\\draw [syConnection] ({source}-{start}) "
             f"-- node {{\\syArrow}} ({target}-{end});"
+        )
+
+    if connection.style is ConnectionStyle.ELBOW:
+        # TikZ turns the corner itself: -| goes across and then down, and |-
+        # goes down and then across.
+        start = (connection.source_anchor or Anchor.EAST).value
+        end = (connection.target_anchor or Anchor.WEST).value
+        corner = "-|" if connection.bend is Bend.ACROSS_THEN_DOWN else "|-"
+        return (
+            f"\\draw [syConnection] ({source}-{start}) "
+            f"{corner} node[near end] {{\\syArrow}} ({target}-{end});"
         )
 
     # Both ends rise to the same height, so the run between them is level. Using

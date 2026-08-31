@@ -25,6 +25,16 @@ PlotNeuralNet do not work with synaplot.
 - `synaplot render` and `synaplot doctor`. `doctor` reports which programs are
   installed, which formats work, and how to install what is missing.
 - `escape`, for text that did not come from you.
+- A diagram can be written as YAML or JSON and read back. `synaplot render`
+  accepts a `.yaml` or `.json` file as well as a `.py` one.
+- `synaplot schema` prints a JSON Schema covering every layer kind, for editor
+  completion or for checking a specification a program generated.
+- `synaplot convert` writes a diagram out as a specification, so a Python file
+  can become YAML.
+- An elbow connection, which turns one right angle. A straight arrow between
+  two layers that are neither level nor stacked reads as a long diagonal.
+- Nine worked examples under `examples/`, carried over from the ones that
+  shipped with PlotNeuralNet.
 
 ### Changed
 

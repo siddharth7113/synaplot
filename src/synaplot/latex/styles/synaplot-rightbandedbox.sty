@@ -23,7 +23,6 @@
                 fill opacity=\sy@bandopacity, pic actions, fill=\sy@bandfill,
                 draw=\sy@bandfill},
             sy@depthlabel/.style={pos=0.5, text width=14*\sy@z, text centered, sloped},
-            sy@captionlabel/.style={text width=15*\sy@LastEastx/\sy@scale, text centered},
         }
 
         \pgfmathsetmacro{\sy@y}{\sy@cubey*\sy@scale}
@@ -81,6 +80,10 @@
         \path (sy@c) edge ["\small\sy@zlabel"',sy@depthlabel] (sy@f); %depth label
         \path (sy@b1) edge ["\sy@ylabel",midway] (sy@a1);  %height label
 
+        % A caption on a thin layer would be squeezed into a column a few
+        % characters wide and hyphenated down the page, so the width has a floor.
+        \pgfmathsetmacro{\sy@capwidth}{max(15*\sy@LastEastx/\sy@scale, 80)}
+        \tikzset{sy@captionlabel/.style={text width=\sy@capwidth pt, text centered}}
         \path (\sy@LastEastx/2,-\sy@y/2,+\sy@z/2) + (0,-25pt) coordinate (sy@cap)
         edge ["\textcolor{black}{ \bf \sy@caption}"',sy@captionlabel] (sy@cap); %Block caption
 

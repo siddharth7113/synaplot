@@ -1,0 +1,34 @@
+# AlexNet, after Krizhevsky, Sutskever and Hinton (2012).
+# Render with: synaplot render examples/alexnet.yaml -o alexnet.svg
+name: alexnet
+layers:
+  - {kind: conv, name: conv1, caption: conv1, filters: 96, spatial: 55,
+     size: {width: 2, height: 40, depth: 40}}
+  - {kind: pool, name: pool1, size: {width: 1, height: 35, depth: 35}}
+  - {kind: conv, name: conv2, caption: conv2, filters: 256, spatial: 27,
+     size: {width: 4, height: 35, depth: 35}}
+  - {kind: pool, name: pool2, size: {width: 1, height: 27, depth: 27}}
+  - {kind: conv, name: conv3, caption: conv3, filters: 384, spatial: 13,
+     size: {width: 5, height: 27, depth: 27}}
+  - {kind: conv, name: conv4, caption: conv4, filters: 384, spatial: 13,
+     size: {width: 5, height: 27, depth: 27}}
+  - {kind: conv, name: conv5, caption: conv5, filters: 256, spatial: 13,
+     size: {width: 4, height: 27, depth: 27}}
+  - {kind: pool, name: pool5, size: {width: 1, height: 18, depth: 18}}
+  - {kind: conv_relu, name: fc6, caption: fc6, filters: 4096, spatial: 1,
+     size: {width: 3, height: 3, depth: 25}}
+  - {kind: conv_relu, name: fc7, caption: fc7, filters: 4096, spatial: 1,
+     size: {width: 3, height: 3, depth: 25}}
+  - {kind: softmax, name: out, caption: fc8 + softmax, classes: 1000,
+     size: {width: 3, height: 3, depth: 25}}
+connections:
+  - {source: conv1, target: pool1}
+  - {source: pool1, target: conv2}
+  - {source: conv2, target: pool2}
+  - {source: pool2, target: conv3}
+  - {source: conv3, target: conv4}
+  - {source: conv4, target: conv5}
+  - {source: conv5, target: pool5}
+  - {source: pool5, target: fc6}
+  - {source: fc6, target: fc7}
+  - {source: fc7, target: out}

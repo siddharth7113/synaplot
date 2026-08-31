@@ -1,0 +1,56 @@
+# U-Net drawn in the U shape of the original paper.
+#
+# The encoder steps down the left, the decoder climbs the right, and each level
+# is joined straight across by a skip that meets a concatenation. Positions are
+# given explicitly, since the default left-to-right chaining cannot make a U.
+#
+# Render with: synaplot render examples/unet_ushape.yaml -o unet_ushape.svg
+name: unet_ushape
+layers:
+  # Encoder, stepping down the left.
+  - {kind: conv_relu, name: enc1, filters: [64, 64], spatial: H,
+     size: {width: [2, 2], height: 40, depth: 40}}
+  - {kind: conv_relu, name: enc2, filters: [128, 128], spatial: H/2,
+     size: {width: [2, 2], height: 32, depth: 32},
+     to: {layer: enc1, anchor: south, offset: {y: -8}}}
+  - {kind: conv_relu, name: enc3, filters: [256, 256], spatial: H/4,
+     size: {width: [2, 2], height: 24, depth: 24},
+     to: {layer: enc2, anchor: south, offset: {y: -7}}}
+  - {kind: conv_relu, name: bottleneck, caption: bottleneck, filters: [512, 512], spatial: H/8,
+     size: {width: [2, 2], height: 16, depth: 16},
+     to: {layer: enc3, anchor: south, offset: {x: 5, y: -6}}}
+
+  # A concatenation sits on each level, halfway across the U.
+  - {kind: concat, name: cat3, to: {layer: enc3, anchor: east, offset: {x: 4}}}
+  - {kind: concat, name: cat2, to: {layer: enc2, anchor: east, offset: {x: 6}}}
+  - {kind: concat, name: cat1, to: {layer: enc1, anchor: east, offset: {x: 8}}}
+
+  # Decoder, climbing the right, each level facing its encoder.
+  - {kind: conv_relu, name: dec3, filters: [256, 256], spatial: H/4,
+     size: {width: [2, 2], height: 24, depth: 24},
+     to: {layer: enc3, anchor: east, offset: {x: 8}}}
+  - {kind: conv_relu, name: dec2, filters: [128, 128], spatial: H/2,
+     size: {width: [2, 2], height: 32, depth: 32},
+     to: {layer: enc2, anchor: east, offset: {x: 10}}}
+  - {kind: conv_relu, name: dec1, filters: [64, 64], spatial: H,
+     size: {width: [2, 2], height: 40, depth: 40},
+     to: {layer: enc1, anchor: east, offset: {x: 12}}}
+  - {kind: softmax, name: out, caption: softmax, classes: 2,
+     to: {layer: dec1, anchor: east, offset: {x: 3}}}
+connections:
+  # Down the encoder.
+  - {source: enc1, target: enc2, source_anchor: south, target_anchor: north}
+  - {source: enc2, target: enc3, source_anchor: south, target_anchor: north}
+  - {source: enc3, target: bottleneck, source_anchor: south, target_anchor: north}
+  # Up the decoder.
+  - {source: bottleneck, target: dec3, source_anchor: north, target_anchor: south}
+  - {source: dec3, target: dec2, source_anchor: north, target_anchor: south}
+  - {source: dec2, target: dec1, source_anchor: north, target_anchor: south}
+  - {source: dec1, target: out}
+  # Straight across each level: encoder, concatenation, decoder.
+  - {source: enc3, target: cat3}
+  - {source: cat3, target: dec3}
+  - {source: enc2, target: cat2}
+  - {source: cat2, target: dec2}
+  - {source: enc1, target: cat1}
+  - {source: cat1, target: dec1}
