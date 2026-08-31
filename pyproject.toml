@@ -1,0 +1,135 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "synaplot"
+version = "0.0.1a0"
+description = "Draw neural network architecture diagrams with LaTeX and TikZ"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Siddharth" }]
+keywords = [
+    "neural-network",
+    "diagram",
+    "visualization",
+    "latex",
+    "tikz",
+    "deep-learning",
+    "architecture",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Text Processing :: Markup :: LaTeX",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/siddharth7113/synaplot"
+Documentation = "https://synaplot.readthedocs.io"
+Source = "https://github.com/siddharth7113/synaplot"
+Issues = "https://github.com/siddharth7113/synaplot/issues"
+Changelog = "https://github.com/siddharth7113/synaplot/blob/main/CHANGELOG.md"
+
+[project.scripts]
+synaplot = "synaplot.cli.main:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.10",
+    "ruff>=0.6",
+    "pre-commit>=3.7",
+    "types-pyyaml>=6.0",
+]
+docs = [
+    "sphinx>=7.3",
+    "pydata-sphinx-theme>=0.15",
+    "myst-parser>=3.0",
+    "numpydoc>=1.7",
+    "sphinx-gallery>=0.16",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/synaplot"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/synaplot", "tests", "README.md", "LICENSE", "NOTICE", "CHANGELOG.md"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["src", "tests"]
+# Archived upstream material, kept verbatim for reference.
+extend-exclude = ["examples/legacy"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "PTH",  # flake8-use-pathlib
+    "RUF",  # ruff-specific
+    "D",    # pydocstyle
+]
+ignore = [
+    "D105",  # magic methods do not need docstrings
+    "D107",  # __init__ is documented on the class
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D103", "D104"]
+"docs/*" = ["D100", "D103"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/synaplot"]
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["torch.*", "yaml.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers --strict-config"
+markers = [
+    "render: test that shells out to a LaTeX toolchain (set SYNAPLOT_RENDER_TESTS=1)",
+]
+
+[tool.coverage.run]
+source = ["src/synaplot"]
+branch = true

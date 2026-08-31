@@ -1,0 +1,21 @@
+synaplot
+Copyright (c) 2026 Siddharth
+
+This product includes software developed as part of PlotNeuralNet.
+
+    PlotNeuralNet
+    Copyright (c) 2018 Haris Iqbal
+    Licensed under the MIT License
+    https://github.com/HarisIqbal88/PlotNeuralNet
+    DOI: 10.5281/zenodo.2526396
+
+synaplot began as a fork of PlotNeuralNet and remains built on its work. The
+TikZ pic definitions that draw every box, banded box, and ball in a synaplot
+diagram originate there. They live in src/synaplot/tex/ and each file carries a
+header naming the original and describing what synaplot changed.
+
+The Python interface, the specification format, the rendering pipeline, and the
+command-line interface are new work.
+
+If you use synaplot in academic work, please cite both projects. See
+CITATION.cff for the details.

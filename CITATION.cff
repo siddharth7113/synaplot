@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: "synaplot: neural network architecture diagrams with LaTeX and TikZ"
+message: >-
+  If you use synaplot in academic work, please cite both synaplot and
+  PlotNeuralNet, the project it is built on.
+type: software
+authors:
+  - given-names: Siddharth
+    alias: siddharth7113
+repository-code: "https://github.com/siddharth7113/synaplot"
+url: "https://synaplot.readthedocs.io"
+license: MIT
+version: 0.0.1a0
+references:
+  - type: software
+    title: "PlotNeuralNet"
+    authors:
+      - family-names: Iqbal
+        given-names: Haris
+    doi: "10.5281/zenodo.2526396"
+    repository-code: "https://github.com/HarisIqbal88/PlotNeuralNet"
+    license: MIT
+    year: 2018
+    notes: >-
+      synaplot is derived from PlotNeuralNet and vendors its TikZ pic
+      definitions.

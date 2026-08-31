@@ -6,16 +6,15 @@
 % https://github.com/HarisIqbal88/PlotNeuralNet
 %
 % Modified for synaplot:
-%   - Every stored and computed macro is prefixed \sy@ so that loading this
-%     package cannot redefine \caption, \fill, \scale, \name, \depth, \x, \y,
-%     \z or \opacity in the host document. See upstream issue #53.
+%   - Every stored and computed macro is prefixed \sy@, so loading this package
+%     leaves \caption, \fill, \scale, \name, \depth, \opacity, \x, \y and \z in
+%     the surrounding document alone. The original overwrote all of them.
 %   - Key namespace moved from /boxblock to /synaplot/box.
 %   - TikZ style and node names are prefixed so they cannot collide with the
-%     host document's own styles and coordinates.
-%   - The depth label is positioned at pos=0.5 instead of pos=0 so it centers
+%     surrounding document's own styles and coordinates.
+%   - The depth label is positioned at pos=0.5 instead of pos=0, so it centers
 %     on the depth edge instead of piling onto the width label at the corner.
-%     See upstream issues #37, #115, #122, #161, #163 and #166.
-%   - \tikzstyle (deprecated in pgf) replaced with \tikzset.
+%   - \tikzstyle, deprecated in pgf, replaced with \tikzset.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \makeatletter
 \tikzset{
