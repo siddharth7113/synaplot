@@ -7,7 +7,7 @@ from importlib.resources import files
 from typing import TYPE_CHECKING
 
 from synaplot.core.base import DrawContext, Layer
-from synaplot.core.diagram import Bend, ConnectionStyle
+from synaplot.core.diagram import FORWARD_FACES, Bend, ConnectionStyle, Flow
 from synaplot.core.geometry import Anchor
 from synaplot.core.theme import color_macro
 
@@ -127,8 +127,12 @@ def connection_to_tikz(
     line, head = _arrowhead(connection, diagram)
 
     if connection.style is ConnectionStyle.FORWARD:
-        start = (connection.source_anchor or Anchor.EAST).value
-        end = (connection.target_anchor or Anchor.WEST).value
+        # A forward arrow runs between the faces the flow points at, so a
+        # diagram that stacks upward needs no anchors written on every arrow.
+        flow = diagram.flow if diagram is not None else Flow.RIGHT
+        leaves, arrives = FORWARD_FACES[flow]
+        start = (connection.source_anchor or leaves).value
+        end = (connection.target_anchor or arrives).value
         return f"\\draw [{line}] ({source}-{start}) --{head} ({target}-{end});"
 
     if connection.style is ConnectionStyle.BYPASS:

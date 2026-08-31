@@ -1,7 +1,8 @@
 \ProvidesPackage{synaplot-labels}[2026/08/31 synaplot labels]
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% The text a layer writes around itself: its caption, and the filter count
-% under each box it draws.
+% The text a layer writes around itself, its caption and the filter count under
+% each box it draws, and the one measurement the writer needs back: how far
+% across the page TikZ draws a unit of depth.
 %
 % A caption is written by the diagram rather than by the pic it belongs to,
 % because where it goes depends on the whole row: every caption in a row hangs
@@ -10,6 +11,14 @@
 % stack of feature maps at different heights.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \makeatletter
+% One unit of depth, drawn as this many centimetres across the page. TikZ
+% projects the depth axis diagonally, so a layer drawn as a volume reaches
+% further to each side than its width, and two of them chained together need
+% room for both. The projection is read from the picture's own z axis rather
+% than written down here, so a document that changes that axis still gets its
+% layers spaced correctly.
+\newcommand{\syDepthSlant}{(-\the\pgf@zx)/1cm}
+
 \newlength{\syCaptionDrop}
 \setlength{\syCaptionDrop}{4mm}
 \newlength{\syCaptionWidth}

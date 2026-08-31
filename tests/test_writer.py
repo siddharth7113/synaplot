@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -64,6 +66,19 @@ def test_first_layer_sits_at_the_origin_and_the_rest_chain():
     assert placements[0][1] is None
     assert placements[1][1] is not None
     assert placements[1][1].layer == "conv1"
+
+
+def test_a_diagram_that_flows_up_stacks_and_points_its_arrows_up():
+    diagram = sp.Diagram(name="stack", flow="up", margin=0.5).add(
+        sp.Block(name="a", text="a"), sp.Block(name="b", text="b")
+    )
+    diagram.connect("a", "b")
+    _, attach = list(diagram.placements())[1]
+    assert attach is not None
+    assert attach.anchor is sp.Anchor.NORTH
+    # Half of b's height, so the gap between the two is the margin.
+    assert attach.offset.y == 0.5 + 12 * 0.2 / 2
+    assert "(a-north) -- (b-south)" in diagram_to_tikz(diagram)
 
 
 def test_an_explicit_position_is_kept():
@@ -192,6 +207,21 @@ def test_a_fragment_has_no_document_wrapper():
     assert "\\documentclass" not in tex
     assert "\\begin{document}" not in tex
     assert "\\begin{tikzpicture}" in tex
+
+
+def test_every_anchor_is_a_coordinate_the_box_pic_defines():
+    """Holds the Anchor enumeration to the pic it describes.
+
+    The two are written in different languages and cannot import from one
+    another, so nothing but this stops them drifting apart.
+    """
+    styles = files("synaplot.latex") / "styles" / "synaplot-box.sty"
+    drawn = set(
+        re.findall(
+            r"\\coordinate \(\\sy@name-(\w+)\)", styles.read_text(encoding="utf-8")
+        )
+    )
+    assert drawn == {anchor.value for anchor in sp.Anchor}
 
 
 def test_styles_keep_their_macros_private():

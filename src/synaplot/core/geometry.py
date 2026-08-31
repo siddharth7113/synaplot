@@ -6,21 +6,16 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-DEPTH_SLANT = 0.385
-"""How far across and down the page TikZ draws one unit of depth.
-
-TikZ projects the depth axis onto ``(-0.385, -0.385)`` by default, so a layer
-drawn as a volume reaches further to each side, and further down, than its
-width and height alone account for.
-"""
-
 
 class Anchor(str, Enum):
     """A named point on a drawn layer that other layers can attach to.
 
-    A box defines every anchor in this enumeration. A ball defines only the
-    five returned by :meth:`ball_anchors`, so attaching to the corner of a ball
-    fails when the diagram is checked.
+    The members are the coordinates the ``Box`` pic defines, which a test holds
+    them to. A ball defines only the five returned by :meth:`ball_anchors`, so
+    attaching to the corner of a ball fails when the diagram is checked.
+
+    A name reads outwards from the depth axis: ``nearsoutheast`` is the corner
+    towards the reader, at the bottom, on the right.
 
     Examples
     --------
@@ -54,6 +49,25 @@ class Anchor(str, Enum):
     NEARSOUTHWEST = "nearsouthwest"
     FARSOUTHWEST = "farsouthwest"
 
+    @property
+    def rise(self) -> int:
+        """Return whether this anchor is on the top face, the bottom, or neither.
+
+        Returns
+        -------
+        int
+            1 on the top face, -1 on the bottom, 0 in between. Multiply by half
+            a layer's height to get how far the anchor sits from its axis.
+
+        Examples
+        --------
+        >>> Anchor.NORTHEAST.rise, Anchor.SOUTH.rise, Anchor.NEAR.rise
+        (1, -1, 0)
+        """
+        if "north" in self.value:
+            return 1
+        return -1 if "south" in self.value else 0
+
     @classmethod
     def ball_anchors(cls) -> frozenset[Anchor]:
         """Return the anchors that a ball defines.
@@ -72,12 +86,15 @@ class Anchor(str, Enum):
 
 
 class Offset(BaseModel):
-    """A shift applied on top of an anchor, in TikZ units.
+    r"""A shift applied on top of an anchor, in TikZ units.
 
     Parameters
     ----------
     x, y, z
-        Distance to shift along each axis. Default is no shift.
+        Distance to shift along each axis. Default is no shift. A string is
+        passed to TikZ as an expression, which is how a distance that only the
+        drawing knows, such as how far across the page a unit of depth goes,
+        gets into an offset.
 
     Examples
     --------
@@ -85,13 +102,19 @@ class Offset(BaseModel):
     '(2,0,0)'
     >>> Offset(x=1.5, y=-2).to_tikz()
     '(1.5,-2,0)'
+
+    An expression is braced, so that TikZ reads it as one component rather than
+    as the start of another coordinate:
+
+    >>> Offset(x=r"2*\syDepthSlant").to_tikz()
+    '({2*\\syDepthSlant},0,0)'
     """
 
     model_config = ConfigDict(frozen=True)
 
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
+    x: float | str = 0.0
+    y: float | str = 0.0
+    z: float | str = 0.0
 
     def to_tikz(self) -> str:
         """Return the offset as a TikZ coordinate.
@@ -101,7 +124,12 @@ class Offset(BaseModel):
         str
             A three-dimensional TikZ coordinate such as ``'(2,0,0)'``.
         """
-        return f"({_number(self.x)},{_number(self.y)},{_number(self.z)})"
+        return "(" + ",".join(_component(v) for v in (self.x, self.y, self.z)) + ")"
+
+
+def _component(value: float | str) -> str:
+    """Return one component of an offset, ready to put in a coordinate."""
+    return "{" + value + "}" if isinstance(value, str) else _number(value)
 
 
 class Attach(BaseModel):

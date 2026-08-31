@@ -32,6 +32,12 @@ PlotNeuralNet do not work with synaplot.
 - `synaplot convert` writes a diagram out as a specification, so a Python file
   can become YAML.
 - `Diagram.axis_heights` reports the height each layer is drawn at.
+- `Diagram.flow` sets which way a chain of layers runs. `up` stacks each layer
+  above the one before it and points every forward arrow the same way, so a
+  transformer needs no positioning and no anchors. `right` is the default and
+  is how a row of feature maps is drawn.
+- An `Offset` field can hold a TikZ expression instead of a number, for a
+  distance only the drawing knows.
 - Flat shapes, for architectures that are not stacks of feature maps. `Dense`
   draws a layer as a column of units, the way a plain neural network is shown,
   and `Block` draws a rounded box holding a line of text, the way the parts of
@@ -55,6 +61,9 @@ PlotNeuralNet do not work with synaplot.
   sit and how wide they set. A pic no longer draws its own caption, so the
   `caption` key is gone from `Box`, `RightBandedBox`, `Ball`, `NodeLayer`, and
   `FlatBlock`.
+- How far across the page a unit of depth reaches is read off the picture's own
+  z axis. It used to be written into the Python as 0.385, which is TikZ's
+  default and was wrong for any document that set a different one.
 - A filter label wider than the box it belongs to is turned on its side, so
   that the labels of two boxes drawn side by side read as two numbers rather
   than one. PlotNeuralNet writes `6464` where a layer has 64 filters twice.

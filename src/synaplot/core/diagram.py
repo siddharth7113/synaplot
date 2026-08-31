@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, field_validator
 
 from synaplot.core.base import Layer
-from synaplot.core.geometry import DEPTH_SLANT, Anchor, Attach, Offset, Scale
+from synaplot.core.geometry import Anchor, Attach, Offset, Scale
 from synaplot.core.theme import Theme
 
 if TYPE_CHECKING:
@@ -49,6 +49,30 @@ class ConnectionStyle(str, Enum):
     ELBOW = "elbow"
     BYPASS = "bypass"
     FULL = "full"
+
+
+class Flow(str, Enum):
+    """Which way a chain of layers runs.
+
+    Attributes
+    ----------
+    RIGHT
+        Each layer goes to the right of the one before it, which is how a stack
+        of feature maps is drawn.
+    UP
+        Each layer goes above the one before it, which is how the blocks of a
+        transformer or a recurrent cell are drawn.
+    """
+
+    RIGHT = "right"
+    UP = "up"
+
+
+#: Which faces a forward arrow runs between, per flow direction.
+FORWARD_FACES = {
+    Flow.RIGHT: (Anchor.EAST, Anchor.WEST),
+    Flow.UP: (Anchor.NORTH, Anchor.SOUTH),
+}
 
 
 class Bend(str, Enum):
@@ -120,10 +144,14 @@ class Diagram(BaseModel):
         Colors for the diagram.
     scale
         Multiplier applied to every size in the diagram.
+    flow
+        Which way a chain of layers runs. Layers that do not say where they go
+        follow this direction, and a forward arrow runs between the faces it
+        points at, so a plain stack needs no positioning and no anchors.
     gap
-        Horizontal space left between two layers that are chained together.
-        ``None`` works it out from how deep the two layers are drawn, which is
-        usually what you want. Set a number to space every pair equally.
+        Space left between two layers that are chained together. ``None`` works
+        it out, which for a row of feature maps means allowing for how deep
+        each is drawn. Set a number to space every pair equally.
     layers
         The layers to draw, in drawing order.
     margin
@@ -159,6 +187,7 @@ class Diagram(BaseModel):
     name: str = "diagram"
     theme: Theme = Field(default_factory=Theme)
     scale: Scale = Field(default_factory=Scale)
+    flow: Flow = Flow.RIGHT
     gap: float | None = None
     margin: float = 1.0
     # SerializeAsAny keeps each layer's own fields. Without it pydantic
@@ -260,8 +289,8 @@ class Diagram(BaseModel):
     def placements(self) -> Iterator[tuple[Layer, Attach | None]]:
         """Work out where each layer goes.
 
-        A layer that names its own position keeps it. A layer that does not is
-        placed to the right of the previous layer, separated by
+        A layer that names its own position keeps it. A layer that does not
+        follows :attr:`Diagram.flow` from the previous layer, separated by
         :attr:`Diagram.gap`. The first such layer sits at the origin.
 
         Yields
@@ -277,11 +306,7 @@ class Diagram(BaseModel):
             elif previous is None:
                 attach = None
             else:
-                attach = Attach(
-                    layer=previous.name,
-                    anchor=Anchor.EAST,
-                    offset=Offset(x=self._gap_between(previous, layer)),
-                )
+                attach = self._step(previous, layer)
             yield layer, attach
             previous = layer
 
@@ -303,7 +328,8 @@ class Diagram(BaseModel):
         Raises
         ------
         ValueError
-            If a layer is attached to one that has not been placed yet.
+            If a layer is attached to one that has not been placed yet, or is
+            offset vertically by a TikZ expression rather than a number.
 
         Examples
         --------
@@ -327,28 +353,46 @@ class Diagram(BaseModel):
                     f"{layer.name!r} is attached to {attach.layer!r}, which comes "
                     f"later in the diagram; attach it to a layer already added"
                 )
+            rise = attach.offset.y
+            if not isinstance(rise, int | float):
+                raise ValueError(
+                    f"{layer.name!r} is offset by a TikZ expression, so how high "
+                    f"it sits is not known here; give its y offset as a number"
+                )
             face = self[attach.layer].half_height(scale)
-            side = attach.anchor.value
-            step = face if "north" in side else -face if "south" in side else 0.0
-            heights[layer.name] = heights[attach.layer] + step + attach.offset.y
+            heights[layer.name] = (
+                heights[attach.layer] + attach.anchor.rise * face + rise
+            )
         return heights
 
-    def _gap_between(self, before: Layer, after: Layer) -> float:
-        """Return how far apart to place two layers that follow one another.
+    def _step(self, before: Layer, after: Layer) -> Attach:
+        r"""Return where a layer goes when it follows another along the flow.
 
-        TikZ draws the depth axis diagonally, at :data:`DEPTH_SLANT` of a unit
-        across for every unit deep. A layer therefore reaches further to each
-        side than its width alone, and two deep layers placed a fixed distance
-        apart overlap on the page. The space needed is half the projected depth
-        of each, plus a margin so the arrow between them is visible.
+        Going right, a layer's west face lands on the previous layer's east, so
+        the offset is the space between them. TikZ draws the depth axis
+        diagonally, so two layers drawn as volumes reach towards each other and
+        need room for both depths on top of the margin. How far a unit of depth
+        reaches is left to ``\\syDepthSlant``, which reads it off the picture's
+        own z axis: writing the number here would be a guess about a setting
+        the drawing is free to change.
+
+        Going up, a layer's own middle lands on the previous layer's top, so
+        half its height is added to the space.
         """
-        if self.gap is not None:
-            return self.gap
         scale = self.scale.value
-        reach = (
-            DEPTH_SLANT * (before.depth_extent(scale) + after.depth_extent(scale)) / 2
-        )
-        return reach + self.margin
+        if self.flow is Flow.UP:
+            space = self.margin if self.gap is None else self.gap
+            return Attach(
+                layer=before.name,
+                anchor=Anchor.NORTH,
+                offset=Offset(y=space + after.half_height(scale)),
+            )
+        if self.gap is not None:
+            step: float | str = self.gap
+        else:
+            depth = before.depth_extent(scale) + after.depth_extent(scale)
+            step = f"{depth / 2:g}*\\syDepthSlant+{self.margin:g}"
+        return Attach(layer=before.name, anchor=Anchor.EAST, offset=Offset(x=step))
 
     def to_tikz(self) -> str:
         """Return the TikZ that draws this diagram, without a document around it.
