@@ -10,7 +10,7 @@ not run against it.
 
 ### Added
 
-- Python packaging: hatchling, a src layout, and a `synaplot` command.
+- Python packaging: hatchling and a src layout.
 - TikZ styles ship with the package.
 
 ### Changed

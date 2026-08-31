@@ -3,7 +3,7 @@
 from importlib.metadata import version as get_version
 
 project = "synaplot"
-copyright = "2026, Siddharth"  # noqa: A001
+copyright = "2026, Siddharth"
 author = "Siddharth"
 release = get_version("synaplot")
 version = release
