@@ -15,9 +15,10 @@ from synaplot.core.base import DrawContext, Layer, label_array
 from synaplot.core.geometry import DEPTH_SLANT, Anchor, Size
 from synaplot.core.theme import color_macro
 
-#: Room a box leaves below itself for the size labels along its bottom edge,
-#: in centimetres.
-LABEL_ROOM = 0.4
+#: Room a box leaves below itself for the size labels along its bottom edge, in
+#: centimetres. Enough for a filter label turned on its side, which is how a box
+#: too narrow for its label upright writes it.
+LABEL_ROOM = 0.7
 
 
 class BoxLayer(Layer):

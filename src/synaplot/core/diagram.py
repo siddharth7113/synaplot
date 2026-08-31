@@ -285,6 +285,54 @@ class Diagram(BaseModel):
             yield layer, attach
             previous = layer
 
+    def axis_heights(self) -> dict[str, float]:
+        """Return the height each layer is drawn at, in TikZ units.
+
+        A layer sits centered on its own axis. Chaining leaves that axis where
+        it was, and attaching to the north or south face of another layer moves
+        it by half that layer's height. Layers that come out at the same height
+        form a row, which is what the writer needs to know to give each row of
+        a drawing its own line of captions.
+
+        Returns
+        -------
+        dict of str to float
+            Each layer name, and the height of its axis measured from the first
+            layer's.
+
+        Raises
+        ------
+        ValueError
+            If a layer is attached to one that has not been placed yet.
+
+        Examples
+        --------
+        >>> from synaplot.layers import Conv, Pool
+        >>> from synaplot.core.geometry import Anchor, Attach
+        >>> diagram = Diagram(name="two").add(
+        ...     Conv(name="conv1"),
+        ...     Pool(name="below", to=Attach(layer="conv1", anchor=Anchor.SOUTH)),
+        ... )
+        >>> diagram.axis_heights()
+        {'conv1': 0.0, 'below': -4.0}
+        """
+        scale = self.scale.value
+        heights: dict[str, float] = {}
+        for layer, attach in self.placements():
+            if attach is None:
+                heights[layer.name] = 0.0
+                continue
+            if attach.layer not in heights:
+                raise ValueError(
+                    f"{layer.name!r} is attached to {attach.layer!r}, which comes "
+                    f"later in the diagram; attach it to a layer already added"
+                )
+            face = self[attach.layer].half_height(scale)
+            side = attach.anchor.value
+            step = face if "north" in side else -face if "south" in side else 0.0
+            heights[layer.name] = heights[attach.layer] + step + attach.offset.y
+        return heights
+
     def _gap_between(self, before: Layer, after: Layer) -> float:
         """Return how far apart to place two layers that follow one another.
 

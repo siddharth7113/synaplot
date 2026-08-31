@@ -92,12 +92,26 @@ def test_a_skip_runs_level():
     assert len(levels) == 1
 
 
-def test_every_caption_sits_on_one_line():
+def test_every_caption_in_a_row_sits_on_one_line():
     tikz = diagram_to_tikz(small_diagram())
-    assert tikz.startswith("\\coordinate (syBaseline) at (0,")
-    # The deepest layer decides where the line goes, and every captioned layer
+    assert tikz.startswith("\\coordinate (syBaseline1) at (0,")
+    # The deepest layer decides where the line goes, and every layer of the row
     # is aligned to it rather than to itself.
-    assert tikz.count("baseline=syBaseline") == 5
+    assert tikz.count("baseline=syBaseline1") == 5
+
+
+def test_a_second_row_gets_a_line_of_its_own():
+    diagram = sp.Diagram(name="rows").add(
+        sp.Conv(name="conv1", caption="conv1"),
+        sp.Conv(
+            name="side1",
+            caption="side 1",
+            to=sp.Attach(layer="conv1", anchor=sp.Anchor.SOUTH, offset=sp.Offset(y=-8)),
+        ),
+    )
+    tikz = diagram_to_tikz(diagram)
+    assert "baseline=syBaseline1" in tikz
+    assert "baseline=syBaseline2" in tikz
 
 
 def test_a_drawing_with_no_captions_needs_no_baseline():

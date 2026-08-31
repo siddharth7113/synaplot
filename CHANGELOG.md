@@ -31,6 +31,7 @@ PlotNeuralNet do not work with synaplot.
   completion or for checking a specification a program generated.
 - `synaplot convert` writes a diagram out as a specification, so a Python file
   can become YAML.
+- `Diagram.axis_heights` reports the height each layer is drawn at.
 - Flat shapes, for architectures that are not stacks of feature maps. `Dense`
   draws a layer as a column of units, the way a plain neural network is shown,
   and `Block` draws a rounded box holding a line of text, the way the parts of
@@ -46,8 +47,12 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
-- Every caption in a drawing sits on the same line. Each one used to sit under
-  its own layer, which left them at different heights.
+- The captions of a row of layers sit on the same line. Each caption used to
+  sit under its own layer, which left them at different heights. A drawing with
+  a second row of layers below the first gives that row a line of its own.
+- A filter label wider than the box it belongs to is turned on its side, so
+  that the labels of two boxes drawn side by side read as two numbers rather
+  than one. PlotNeuralNet writes `6464` where a layer has 64 filters twice.
 - An arrow into a flat layer ends in an arrowhead. An arrow into a layer drawn
   as a volume still carries one partway along, where the box cannot hide it.
 - The lines of a `full` connection pass behind the units they join rather than

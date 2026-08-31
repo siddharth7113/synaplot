@@ -1,4 +1,4 @@
-\coordinate (syBaseline) at (0,-6.34);
+\coordinate (syBaseline1) at (0,-6.64);
 
 \pic[shift={(0,0,0)}] at (0,0,0)
     {Box={
@@ -11,7 +11,7 @@
         xlabel={{"64",""}},
         zlabel=512,
         caption=conv1,
-        baseline=syBaseline
+        baseline=syBaseline1
     }};
 
 \pic[shift={(1.6,0,0)}] at (conv1-east)
@@ -22,7 +22,7 @@
         height=32.0,
         width=1,
         depth=32.0,
-        baseline=syBaseline
+        baseline=syBaseline1
     }};
 
 \pic[shift={(1.6,0,0)}] at (pool1-east)
@@ -37,7 +37,7 @@
         zlabel=256,
         bandfill=\syColorConvRelu,
         bandopacity=0.6,
-        baseline=syBaseline
+        baseline=syBaseline1
     }};
 
 \pic[shift={(1.6,0,0)}] at (conv2-east)
@@ -50,7 +50,7 @@
         depth=25.0,
         zlabel=10,
         caption=softmax,
-        baseline=syBaseline
+        baseline=syBaseline1
     }};
 
 \pic[shift={(1.6,0,0)}] at (out-east)
@@ -60,7 +60,7 @@
         opacity=0.6,
         radius=2.5,
         logo=$+$,
-        baseline=syBaseline
+        baseline=syBaseline1
     }};
 
 \draw [syConnection] (conv1-east) -- node {\syArrow} (pool1-west);

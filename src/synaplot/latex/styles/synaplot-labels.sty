@@ -1,6 +1,7 @@
-\ProvidesPackage{synaplot-caption}[2026/08/31 synaplot captions]
+\ProvidesPackage{synaplot-labels}[2026/08/31 synaplot labels]
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% One caption, drawn under one layer.
+% The text a layer writes around itself: its caption, and the filter count
+% under each box it draws.
 %
 % Every pic calls \syCaptionAt so that captions are placed the same way
 % wherever they come from. When the drawing sets a baseline, every caption in
@@ -32,5 +33,34 @@
         \node[anchor=north, text width=#1pt, align=center, inner sep=0pt,
               yshift=\sy@cap@drop] at \sy@cap@at
              {\textcolor{black}{\bf \sy@caption}};
+    \fi}
+
+% \syFilterLabel{<left coordinate>}{<right coordinate>}{<box width in cm>}
+%
+% Writes \sy@xlabel under the bottom edge of one box. A label wider than the
+% box is turned on its side, so that the labels of two boxes drawn side by side
+% do not run together as one number. 2pt of that width is kept as the gap
+% between one label and the next.
+%
+% A box standing on its own keeps its label upright, whatever its width, since
+% there is nothing beside it to run into. \sy@boxcount says how many boxes the
+% layer draws.
+\newsavebox{\sy@labelbox}
+\newcommand{\syFilterLabel}[3]{%
+    % A picture selects a font that measures as nothing, so the label is set in
+    % an interrupted picture to measure it, and set globally, because the
+    % interruption opens a group a local box would not survive.
+    \pgfinterruptpicture
+        \global\setbox\sy@labelbox\hbox{\sy@xlabel}%
+    \endpgfinterruptpicture
+    \@tempswafalse
+    \ifnum\sy@boxcount>1
+        \ifdim\wd\sy@labelbox>\dimexpr#3cm-2pt\relax \@tempswatrue \fi
+    \fi
+    \if@tempswa
+        \path (#1) -- (#2)
+            node[midway, rotate=90, anchor=east, inner sep=2pt] {\sy@xlabel};
+    \else
+        \path (#1) edge ["\sy@xlabel"',midway] (#2);
     \fi}
 \makeatother

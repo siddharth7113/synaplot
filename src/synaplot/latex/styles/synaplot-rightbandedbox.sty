@@ -28,6 +28,12 @@
         \pgfmathsetmacro{\sy@y}{\sy@cubey*\sy@scale}
         \pgfmathsetmacro{\sy@z}{\sy@cubez*\sy@scale}
 
+        % How many boxes this layer draws, which decides whether a filter
+        % label has a neighbour to run into.
+        \xdef\sy@boxcount{0}
+        \foreach \sy@each in \sy@cubex {%
+            \xdef\sy@boxcount{\number\numexpr\sy@boxcount+1\relax}}
+
         %Multiple concatenated boxes
         \foreach[count=\sy@i,%
                  evaluate=\sy@i as \sy@xlabel using {array({\sy@boxlabels},\sy@i-1)},%
@@ -66,7 +72,7 @@
                 (sy@d) -- (sy@a) -- (sy@b) -- (sy@c) -- cycle
                 (sy@d) -- (sy@a) -- (sy@h) -- (sy@e) -- cycle;
 
-            \path (sy@b) edge ["\sy@xlabel"',midway] (sy@c);
+            \syFilterLabel{sy@b}{sy@c}{\sy@x}
 
             \xdef\sy@LastEastx{\sy@k} %\sy@k persists as \sy@LastEastx after loop
         }%Loop ends

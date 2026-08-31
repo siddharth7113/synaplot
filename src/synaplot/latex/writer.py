@@ -6,7 +6,7 @@ from functools import lru_cache
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
-from synaplot.core.base import DrawContext
+from synaplot.core.base import DrawContext, Layer
 from synaplot.core.diagram import Bend, ConnectionStyle
 from synaplot.core.geometry import Anchor
 from synaplot.core.theme import color_macro
@@ -280,33 +280,41 @@ def _format(value: float) -> str:
     return str(int(value)) if value == int(value) else repr(round(value, 4))
 
 
-#: How far below the lowest point of a drawing its captions sit, in
-#: centimetres. Enough to clear the size labels along the bottom edge of a box.
+#: How far below the lowest point of a row its captions sit, in centimetres.
+#: Enough to clear the size labels along the bottom edge of a box.
 CAPTION_DROP = 0.4
 
-#: Name of the coordinate every caption is aligned to.
-BASELINE = "syBaseline"
 
+def _baselines(diagram: Diagram, scale: float) -> tuple[dict[str, str], list[str]]:
+    """Return the line each caption sits on, and the TikZ that defines them.
 
-def _baseline(diagram: Diagram, scale: float) -> tuple[str, list[str]]:
-    """Return the coordinate captions align to, and the TikZ that defines it.
-
-    Aligning every caption to one coordinate puts them on a single line, so
-    they read as a row whatever height each layer is drawn at. A drawing with
-    no captions needs no coordinate and gets none, and each pic then places its
-    caption under its own layer.
+    Layers drawn at the same height share one line, so their captions read as a
+    row. A drawing with a second row of layers below the first gets a second
+    line, rather than dropping those captions onto the first and printing them
+    over the ones already there.
 
     Returns
     -------
-    tuple of (str, list of str)
-        The name of the coordinate, empty when nothing is captioned, and the
-        statements to write before the layers.
+    tuple of (dict of str to str, list of str)
+        The coordinate each captioned layer aligns to, keyed by layer name, and
+        the statements to write before the layers. A row with nothing captioned
+        appears in neither.
     """
-    if not any(layer.caption for layer in diagram.layers):
-        return "", []
-    floor = max((layer.floor(scale) for layer in diagram.layers), default=0.0)
-    level = _format(-(floor + CAPTION_DROP))
-    return BASELINE, [f"\\coordinate ({BASELINE}) at (0,{level});"]
+    heights = diagram.axis_heights()
+    rows: dict[float, list[Layer]] = {}
+    for layer in diagram.layers:
+        rows.setdefault(round(heights[layer.name], 6), []).append(layer)
+
+    aligned: dict[str, str] = {}
+    setup: list[str] = []
+    for height, members in sorted(rows.items(), reverse=True):
+        if not any(member.caption for member in members):
+            continue
+        name = f"syBaseline{len(setup) + 1}"
+        floor = height - max(member.floor(scale) for member in members)
+        setup.append(f"\\coordinate ({name}) at (0,{_format(floor - CAPTION_DROP)});")
+        aligned.update(dict.fromkeys((member.name for member in members), name))
+    return aligned, setup
 
 
 def diagram_to_tikz(diagram: Diagram) -> str:
@@ -323,12 +331,15 @@ def diagram_to_tikz(diagram: Diagram) -> str:
         TikZ statements, without the surrounding environment.
     """
     scale = diagram.scale.value
-    baseline, setup = _baseline(diagram, scale)
+    aligned, setup = _baselines(diagram, scale)
     blocks = list(setup)
     blocks += [
         layer.to_tikz(
             DrawContext(
-                theme=diagram.theme, scale=scale, attach=attach, baseline=baseline
+                theme=diagram.theme,
+                scale=scale,
+                attach=attach,
+                baseline=aligned.get(layer.name, ""),
             )
         )
         for layer, attach in diagram.placements()
