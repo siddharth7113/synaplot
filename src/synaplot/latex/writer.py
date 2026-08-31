@@ -6,13 +6,14 @@ from functools import lru_cache
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
-from synaplot.core.base import DrawContext, Layer
+from synaplot.core.base import DrawContext, Layer, tikz_colour
 from synaplot.core.diagram import FORWARD_FACES, Bend, ConnectionStyle, Flow
 from synaplot.core.geometry import Anchor
 from synaplot.core.theme import color_macro
 
 if TYPE_CHECKING:
-    from synaplot.core.diagram import Connection, Diagram
+    from synaplot.core.diagram import Annotation, Connection, Diagram
+    from synaplot.core.geometry import Offset
 
 # Libraries the drawing needs: quotes for the labels along a box edge, 3d for
 # the plane an input image is drawn on, arrows.meta for the arrowheads, and
@@ -42,6 +43,7 @@ ARROW_STYLES = r"""
         ultra thick, draw=EDGE, opacity=0.7,
         every node/.style={sloped,allow upside down}},
     syEdge/.style={draw=EDGE, opacity=0.35, line width=0.2mm},
+    syAnnotation/.style={ultra thick, draw=EDGE, opacity=0.7},
     syHead/.style={-{Stealth[length=3.5mm,width=3mm]}},
 }
 """.strip()
@@ -136,7 +138,7 @@ def connection_to_tikz(
         return f"\\draw [{line}] ({source}-{start}) --{head} ({target}-{end});"
 
     if connection.style is ConnectionStyle.BYPASS:
-        return _bypass(connection, line, head)
+        return _bypass(connection, line, head, diagram)
 
     if connection.style is ConnectionStyle.ELBOW:
         # TikZ turns the corner itself: -| goes across and then down, and |-
@@ -206,6 +208,9 @@ _STEP_OUT = {
     Anchor.SOUTHWEST: (-1, 0, 0),
 }
 
+#: How far a bypass steps out when nothing says and nothing can be worked out.
+DEFAULT_CLEARANCE = 1.5
+
 #: Which face a bypass comes back in on, per direction it stepped out in.
 _SIDE = {
     (1, 0, 0): Anchor.EAST,
@@ -217,7 +222,9 @@ _SIDE = {
 }
 
 
-def _bypass(connection: Connection, line: str, head: str) -> str:
+def _bypass(
+    connection: Connection, line: str, head: str, diagram: Diagram | None
+) -> str:
     """Return an arrow that steps aside, runs past, and comes back in.
 
     Raises
@@ -234,7 +241,8 @@ def _bypass(connection: Connection, line: str, head: str) -> str:
     # An arrow that left from a corner comes back in on the side that corner
     # names, because the corner only says where to leave from.
     end = connection.target_anchor or _SIDE[across, up, out]
-    step = ",".join(_format(way * connection.clearance) for way in (across, up, out))
+    clearance = _clearance(connection, start, out, diagram)
+    step = ",".join(_format(way * clearance) for way in (across, up, out))
     # Having stepped sideways, come back on the other axis first, so the arrow
     # meets the target square on rather than at a slant. An arrow that stepped
     # along the depth axis runs straight to the target instead: a square turn
@@ -245,6 +253,29 @@ def _bypass(connection: Connection, line: str, head: str) -> str:
         f"\\draw [{line}] ({connection.source}-{start.value}) -- ++({step})\n"
         f"    {corner}{head} ({connection.target}-{end.value});"
     )
+
+
+def _clearance(
+    connection: Connection, start: Anchor, out: int, diagram: Diagram | None
+) -> float:
+    """Return how far a bypass steps out before it runs past.
+
+    An arrow stepping along the depth axis is heading for a lane, and where
+    that lane is is where its target was placed, so the step is the depth
+    between the two. Stepping any other distance leaves the last leg of the
+    arrow slanting through the drawing, which is what makes several such arrows
+    cross.
+    """
+    if connection.clearance is not None:
+        return connection.clearance
+    if not out or diagram is None:
+        return DEFAULT_CLEARANCE
+    depths = diagram.axes()
+    scale = diagram.scale.value
+    leaves = depths[connection.source][1] + start.dive * (
+        diagram[connection.source].depth_extent(scale) / 2
+    )
+    return (depths[connection.target][1] - leaves) * out
 
 
 def _full_connection(connection: Connection, diagram: Diagram | None) -> str:
@@ -294,8 +325,8 @@ def _format(value: float) -> str:
 def _caption_rows(diagram: Diagram) -> list[list[Layer]]:
     """Return the layers of each row that has a caption on it.
 
-    Layers drawn at the same height are a row, and the captions of a row sit on
-    one line so that they read as a line. A row with nothing captioned needs no
+    Layers whose axes coincide are a row, and the captions of a row sit on one
+    line so that they read as a line. A row with nothing captioned needs no
     line and is left out.
 
     Returns
@@ -305,13 +336,18 @@ def _caption_rows(diagram: Diagram) -> list[list[Layer]]:
         listed, captioned or not, because an uncaptioned layer can still be the
         one that reaches lowest and so decides where the line goes.
     """
-    heights = diagram.axis_heights()
-    rows: dict[float, list[Layer]] = {}
+    axes = diagram.axes()
+    rows: dict[tuple[float, float], list[Layer]] = {}
     for layer in diagram.layers:
-        rows.setdefault(round(heights[layer.name], 6), []).append(layer)
+        height, depth = axes[layer.name]
+        rows.setdefault((round(height, 6), round(depth, 6)), []).append(layer)
     return [
         members
-        for _, members in sorted(rows.items(), reverse=True)
+        # A row set further towards the reader is drawn lower on the page, so
+        # it comes after one at the same height but further away.
+        for _, members in sorted(
+            rows.items(), key=lambda row: (row[0][0], -row[0][1]), reverse=True
+        )
         if any(member.caption for member in members)
     ]
 
@@ -336,6 +372,91 @@ def _captions(row: list[Layer], index: int) -> str:
             if layer.caption
         ]
     )
+
+
+def annotation_to_tikz(annotation: Annotation) -> str:
+    """Return the TikZ that draws one labelled arrow beside a layer.
+
+    The arrow runs between a point on the layer and a point in the space around
+    it, and the label sits at that far point on the side the arrow came from,
+    so that it hugs the arrow rather than reaching further out than it.
+
+    Parameters
+    ----------
+    annotation
+        The arrow to draw.
+
+    Returns
+    -------
+    str
+        One TikZ statement.
+    """
+    near = _shifted(f"{annotation.layer}-{annotation.anchor.value}", annotation.offset)
+    label = f"node[anchor={_label_anchor(annotation)}] {{{annotation.text}}}"
+    # The arrowhead sits partway along the line, as it does on a connection,
+    # and turns with it.
+    head = "node[sloped,allow upside down] {\\syArrow}"
+    reach = annotation.reach.to_tikz()
+    if annotation.inward:
+        return f"\\draw [syAnnotation] {near} ++{reach} {label} -- {head} {near};"
+    return f"\\draw [syAnnotation] {near} -- {head} ++{reach} {label};"
+
+
+def _shifted(coordinate: str, offset: Offset) -> str:
+    """Return a TikZ coordinate, shifted when the offset asks for it."""
+    if offset == type(offset)():
+        return f"({coordinate})"
+    return f"([shift={{{offset.to_tikz()}}}] {coordinate})"
+
+
+def _label_anchor(annotation: Annotation) -> str:
+    """Return which corner of an annotation's label sits at the end of its arrow.
+
+    The label is pinned on the side the arrow came from, so it lies along the
+    arrow. Two arrows into the same face, one offset up and one down, then get
+    their labels above and below rather than on top of each other.
+    """
+    up = _sign(annotation.offset.y) or -_sign(annotation.reach.y)
+    across = _sign(annotation.reach.x)
+    corner = [
+        {1: "south", -1: "north"}.get(up, ""),
+        {1: "east", -1: "west"}.get(across, ""),
+    ]
+    return " ".join(part for part in corner if part) or "center"
+
+
+def _sign(value: float | str) -> int:
+    """Return which way a distance goes, or 0 for one only the drawing knows."""
+    if isinstance(value, str):
+        return 0
+    return (value > 0) - (value < 0)
+
+
+def legend_to_tikz(diagram: Diagram) -> str:
+    """Return the TikZ that draws a diagram's legend.
+
+    Parameters
+    ----------
+    diagram
+        The diagram to draw the legend of.
+
+    Returns
+    -------
+    str
+        One TikZ statement, or an empty string when the diagram has no legend
+        or nothing to put in one.
+    """
+    entries = diagram.legend_entries()
+    if diagram.legend is None or not entries:
+        return ""
+    rows = "\n".join(
+        f"    \\syLegendItem{{{tikz_colour(entry.fill, entry.role)}}}"
+        f"{{{entry.opacity}}}{{{entry.label}}}"
+        for entry in entries
+    )
+    corner = diagram.legend.position
+    pinned, step = corner.outside
+    return f"\\syLegend{{{corner.value}}}{{{pinned}}}{{{step}}}{{%\n{rows}}}"
 
 
 def diagram_to_tikz(diagram: Diagram) -> str:
@@ -369,7 +490,11 @@ def diagram_to_tikz(diagram: Diagram) -> str:
         blocks.append(drawing)
     roof = max((layer.half_height(scale) for layer in diagram.layers), default=0.0)
     blocks += [connection_to_tikz(c, roof, diagram) for c in diagram.connections]
+    blocks += [annotation_to_tikz(a) for a in diagram.annotations]
     blocks += [_captions(row, index) for index, row in enumerate(rows, start=1)]
+    # The legend is drawn last, so that it can be placed against the edge of
+    # everything else the diagram drew.
+    blocks += [block for block in [legend_to_tikz(diagram)] if block]
     return "\n\n".join(blocks)
 
 

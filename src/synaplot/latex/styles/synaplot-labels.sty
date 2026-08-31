@@ -50,6 +50,35 @@
           align=center, inner sep=0pt]
          at (syExtent-#1.center |- #2) {\textcolor{black}{\bf #3}};}
 
+\newlength{\syLegendInset}
+\setlength{\syLegendInset}{4mm}
+\newlength{\sy@legendy}
+
+% \syLegendItem{<fill>}{<opacity>}{<label>}
+%
+% One row of a legend: a swatch of the colour a layer is filled with, and the
+% name of what that colour stands for. Rows are set as a table, so that the
+% names line up however wide each swatch's neighbour is.
+\newcommand{\syLegendItem}[3]{%
+    \tikz[baseline=-0.55ex]{%
+        \draw[fill=#1, fill opacity=#2, draw=black, line width=0.15mm]
+            (0,0) rectangle (0.42,0.28);} & #3 \\}
+
+% \syLegend{<corner of the drawing>}{<corner of the key>}{<step>}{<rows>}
+%
+% Draws the rows against one corner of the finished drawing, just clear of it
+% rather than over it, so that a corner holding part of the diagram is not
+% covered. Both corners are TikZ anchors: the key's is the drawing's flipped
+% top for bottom, and the step says which way that is, so the gap of
+% \syLegendInset is left in the right direction.
+\newcommand{\syLegend}[4]{%
+    \setlength{\sy@legendy}{#3\syLegendInset}%
+    \node[anchor=#2, yshift=\sy@legendy,
+          draw=black, line width=0.15mm, rounded corners=2pt,
+          fill=white, fill opacity=0.85, text opacity=1, inner sep=4pt]
+        at (current bounding box.#1)
+        {\begin{tabular}{@{}c@{\ }l@{}}#4\end{tabular}};}
+
 % \syFilterLabel{<left coordinate>}{<right coordinate>}{<box width in cm>}
 %
 % Writes \sy@xlabel under the bottom edge of one box. A label wider than the

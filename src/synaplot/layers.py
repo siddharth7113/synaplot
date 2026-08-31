@@ -84,33 +84,97 @@ class FilteredBox(BoxLayer):
         return options
 
 
-class Conv(FilteredBox):
-    """A convolution, drawn as a box."""
+class BandedBox(BoxLayer):
+    """Base for a box with a colored band down the right of each box it draws.
 
-    kind: Literal["conv"] = "conv"
-
-
-class ConvRelu(FilteredBox):
-    """A convolution followed by an activation, drawn as a banded box.
-
-    The band on the right of each box stands for the activation.
+    The band stands for the activation applied after the layer.
 
     Parameters
     ----------
     band_opacity
         How opaque the band is, from 0 to 1.
+
+    Attributes
+    ----------
+    band_role : str
+        Which color of the theme the band is filled with.
     """
 
-    kind: Literal["conv_relu"] = "conv_relu"
     pic: ClassVar[str] = "RightBandedBox"
+    band_role: ClassVar[str] = "conv_relu"
 
     band_opacity: float = Field(default=0.6, ge=0, le=1)
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
-        """Return the TikZ options for this convolution and its band."""
+        """Return the TikZ options for this box and its band."""
         options = super().pic_options(context)
-        options["bandfill"] = f"\\{color_macro('conv_relu')}"
+        options["bandfill"] = f"\\{color_macro(self.band_role)}"
         options["bandopacity"] = str(self.band_opacity)
+        return options
+
+
+class Conv(FilteredBox):
+    """A convolution, drawn as a box."""
+
+    kind: Literal["conv"] = "conv"
+    title: ClassVar[str] = "Convolution"
+
+
+class ConvRelu(FilteredBox, BandedBox):
+    """A convolution followed by an activation, drawn as a banded box."""
+
+    kind: Literal["conv_relu"] = "conv_relu"
+    title: ClassVar[str] = "Convolution + ReLU"
+
+
+class Deconv(FilteredBox):
+    """A transposed convolution, drawn as a box."""
+
+    kind: Literal["deconv"] = "deconv"
+    role: ClassVar[str] = "deconv"
+    title: ClassVar[str] = "Transposed convolution"
+
+
+class BatchNorm(BoxLayer):
+    """A normalization layer, drawn as a thin box.
+
+    It leaves the feature map the size it was, so it is drawn as tall and as
+    deep as the layer before it and much thinner.
+    """
+
+    kind: Literal["batch_norm"] = "batch_norm"
+    role: ClassVar[str] = "batchnorm"
+    title: ClassVar[str] = "Batch normalization"
+
+    size: Size = Size(width=0.7)
+    opacity: float = Field(default=0.6, ge=0, le=1)
+
+
+class FullyConnected(BandedBox):
+    """A fully connected layer, drawn as a banded box.
+
+    This is how a dense layer is drawn among feature maps. For a plain neural
+    network drawn as columns of units, use :class:`Dense`.
+
+    Parameters
+    ----------
+    units
+        Number of units, written along the bottom edge.
+
+    """
+
+    kind: Literal["fully_connected"] = "fully_connected"
+    role: ClassVar[str] = "fc"
+    band_role: ClassVar[str] = "fc_relu"
+    title: ClassVar[str] = "Fully connected"
+
+    size: Size = Size(width=1.5, height=3, depth=25)
+    units: int | None = None
+
+    def pic_options(self, context: DrawContext) -> dict[str, str]:
+        """Return the TikZ options, including the unit count."""
+        options = super().pic_options(context)
+        options["xlabel"] = label_array(["" if self.units is None else str(self.units)])
         return options
 
 
@@ -125,6 +189,7 @@ class Pool(Resampling):
     """A pooling layer, drawn as a short box."""
 
     kind: Literal["pool"] = "pool"
+    title: ClassVar[str] = "Pooling"
     role: ClassVar[str] = "pool"
 
 
@@ -132,6 +197,7 @@ class Unpool(Resampling):
     """An upsampling layer, drawn as a short box."""
 
     kind: Literal["unpool"] = "unpool"
+    title: ClassVar[str] = "Upsampling"
     role: ClassVar[str] = "unpool"
 
 
@@ -146,6 +212,7 @@ class Softmax(BoxLayer):
     """
 
     kind: Literal["softmax"] = "softmax"
+    title: ClassVar[str] = "Softmax"
     role: ClassVar[str] = "softmax"
 
     size: Size = Size(width=1.5, height=3, depth=25)
@@ -210,6 +277,7 @@ class Sum(Ball):
     r"""An elementwise sum, drawn as a sphere marked with a plus."""
 
     kind: Literal["sum"] = "sum"
+    title: ClassVar[str] = "Sum"
     role: ClassVar[str] = "sum"
     symbol: ClassVar[str] = "$+$"
 
@@ -218,6 +286,7 @@ class Concat(Ball):
     r"""A concatenation, drawn as a sphere marked with two bars."""
 
     kind: Literal["concat"] = "concat"
+    title: ClassVar[str] = "Concatenation"
     role: ClassVar[str] = "concat"
     symbol: ClassVar[str] = "$||$"
 
@@ -296,6 +365,7 @@ class Dense(Layer):
     """
 
     kind: Literal["dense"] = "dense"
+    title: ClassVar[str] = "Fully connected"
     role: ClassVar[str] = "fc"
     pic: ClassVar[str] = "NodeLayer"
     flat: ClassVar[bool] = True
@@ -452,13 +522,17 @@ class Block(Layer):
 
 __all__ = [
     "Ball",
+    "BandedBox",
+    "BatchNorm",
     "Block",
     "BoxLayer",
     "Concat",
     "Conv",
     "ConvRelu",
+    "Deconv",
     "Dense",
     "FilteredBox",
+    "FullyConnected",
     "Input",
     "Operator",
     "Pool",

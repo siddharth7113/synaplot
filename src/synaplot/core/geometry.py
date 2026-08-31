@@ -68,6 +68,26 @@ class Anchor(str, Enum):
             return 1
         return -1 if "south" in self.value else 0
 
+    @property
+    def dive(self) -> int:
+        """Return whether this anchor is on the near face, the far one, or neither.
+
+        Returns
+        -------
+        int
+            1 on the face towards the reader, -1 on the face away from them, 0
+            in between. Multiply by half a layer's depth to get how far the
+            anchor sits from its axis.
+
+        Examples
+        --------
+        >>> Anchor.NEARSOUTHWEST.dive, Anchor.FAREAST.dive, Anchor.NORTH.dive
+        (1, -1, 0)
+        """
+        if "near" in self.value:
+            return 1
+        return -1 if "far" in self.value else 0
+
     @classmethod
     def ball_anchors(cls) -> frozenset[Anchor]:
         """Return the anchors that a ball defines.

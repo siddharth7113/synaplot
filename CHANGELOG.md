@@ -14,7 +14,10 @@ PlotNeuralNet do not work with synaplot.
 - TikZ styles ship with the package.
 - `Diagram`, with layers and the connections between them. A layer that does
   not say where it goes is placed after the one before it.
-- `Conv`, `ConvRelu`, `Pool`, `Unpool`, `Softmax`, `Sum`, `Concat`, and `Input`.
+- `Conv`, `ConvRelu`, `Deconv`, `Pool`, `Unpool`, `FullyConnected`,
+  `BatchNorm`, `Softmax`, `Sum`, `Concat`, and `Input`. PlotNeuralNet defined
+  colours for a fully connected layer, a deconvolution and a normalization
+  layer and then never drew any of them.
 - `Diagram.to_tex` writes a document that carries its own styles, so it
   compiles from any directory and pastes into Overleaf as is.
 - `Diagram.save` writes `.tex`, `.pdf`, `.svg`, or `.png`, picking the format
@@ -31,7 +34,7 @@ PlotNeuralNet do not work with synaplot.
   completion or for checking a specification a program generated.
 - `synaplot convert` writes a diagram out as a specification, so a Python file
   can become YAML.
-- `Diagram.axis_heights` reports the height each layer is drawn at.
+- `Diagram.axes` reports the height and the depth each layer is drawn at.
 - `Diagram.flow` sets which way a chain of layers runs. `up` stacks each layer
   above the one before it and points every forward arrow the same way, so a
   transformer needs no positioning and no anchors. `right` is the default and
@@ -48,15 +51,31 @@ PlotNeuralNet do not work with synaplot.
   main line. `bypass` steps out to one side, runs past whatever is in the way,
   and comes back in, which is the shape of a residual connection.
 - A `fill` on any layer, overriding the colour the theme would give it.
-- Nine worked examples under `examples/`, carried over from the ones that
-  shipped with PlotNeuralNet.
+- `Diagram.annotate` draws a labelled arrow beside a layer, between it and a
+  point in the space around it, for saying what reaches a layer and what leaves
+  it without drawing the layer that supplies it. The label hugs the arrow, so
+  two arrows into one face read as two.
+- `Diagram.add_legend` draws a key in a corner of the drawing, naming each kind
+  of layer the diagram draws and the colour it is drawn in. It sits just clear
+  of the corner it names, so it covers nothing. List the entries yourself to
+  say something else.
+- Thirteen worked examples under `examples/`, carried over from the ones that
+  shipped with PlotNeuralNet. `hed.yaml`, `unet_ushape.yaml` and
+  `softmax_loss.yaml` are the three that needed drawing synaplot could not do
+  until now; `resnet_block.yaml` is new.
 
 ### Changed
 
+- The diagram's `scale` reaches the layers it draws. Layers used to be spaced
+  for the scale set and drawn at the default one, so any scale but the default
+  lined up nothing.
 - The captions of a row of layers sit on the same line, read off the lowest
   point any layer of that row drew. Each caption used to sit under its own
   layer, which left them at different heights. A drawing with a second row of
-  layers below the first gives that row a line of its own.
+  layers below the first gives that row a line of its own. Depth counts as
+  well as height, because TikZ draws the depth axis diagonally: a layer set
+  towards the reader is drawn lower on the page than the row it was chained
+  from, and its caption goes with it.
 - `\syCaptionDrop` and `\syCaptionWidth` set how far below a row its captions
   sit and how wide they set. A pic no longer draws its own caption, so the
   `caption` key is gone from `Box`, `RightBandedBox`, `Ball`, `NodeLayer`, and
@@ -74,7 +93,10 @@ PlotNeuralNet do not work with synaplot.
 - A `bypass` can leave from a corner as well as a side, so two of them can
   leave the same layer without overlapping. It can also step out along the
   depth axis, towards the reader or away from them, which is how several arrows
-  leaving one line reach a row of layers of their own.
+  leaving one line reach a row of layers of their own. One that steps along the
+  depth axis works out how far to step from where its target was placed, so
+  five such arrows land in five lanes without a distance written on any of
+  them.
 - `Dense` leaves a gap at its break and draws the ellipsis to scale with its
   circles. The ellipsis used to be text at document size in a gap too small
   for it.

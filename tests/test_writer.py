@@ -13,10 +13,13 @@ import pytest
 
 import synaplot as sp
 from synaplot.latex.writer import (
+    DEFAULT_CLEARANCE,
+    annotation_to_tikz,
     connection_to_tikz,
     diagram_to_tikz,
     style_source,
 )
+from synaplot.spec import layer_types
 
 EXPECTED = Path(__file__).parent / "expected"
 
@@ -192,6 +195,132 @@ def test_a_bypass_can_step_along_the_depth_axis():
     # Depth is drawn across the page as well as down it, so there is no square
     # turn to make; the arrow runs straight to the target.
     assert "-- node[near end] {\\syArrow} (side1-west)" in arrow
+
+
+def test_a_bypass_along_the_depth_axis_finds_its_own_lane():
+    """The lane is where the target was placed, so nothing has to say it."""
+    diagram = sp.Diagram(name="lane").add(
+        sp.Conv(name="conv1"),
+        sp.Conv(name="side1", to=sp.Attach(layer="conv1", offset=sp.Offset(z=40))),
+    )
+    diagram.connect(
+        "conv1", "side1", style="bypass", source_anchor="near", target_anchor="west"
+    )
+    arrow = connection_to_tikz(diagram.connections[0], 0.0, diagram)
+    # conv1 is 40 deep, so its near face already stands 4 out at scale 0.2 and
+    # the step covers the rest of the way to the lane.
+    assert "-- ++(0,0,36)" in arrow
+
+
+def test_a_bypass_with_no_lane_to_find_steps_out_a_set_distance():
+    diagram = sp.Diagram(name="side").add(
+        sp.Block(name="a", text="a"),
+        sp.Block(name="b", text="b", to=sp.Attach(layer="a", anchor=sp.Anchor.NORTH)),
+    )
+    diagram.connect("a", "b", style="bypass", source_anchor="east")
+    arrow = connection_to_tikz(diagram.connections[0], 0.0, diagram)
+    assert f"-- ++({DEFAULT_CLEARANCE:g},0,0)" in arrow
+
+
+def test_a_layer_set_towards_the_reader_gets_a_caption_line_of_its_own():
+    """TikZ draws depth diagonally, so a layer set forward is drawn lower."""
+    diagram = sp.Diagram(name="lanes").add(
+        sp.Conv(name="conv1", caption="conv1"),
+        sp.Conv(
+            name="side1",
+            caption="side 1",
+            to=sp.Attach(layer="conv1", offset=sp.Offset(z=20)),
+        ),
+    )
+    tikz = diagram_to_tikz(diagram)
+    assert "\\syRowBase{syBaseline1}{conv1}" in tikz
+    assert "\\syRowBase{syBaseline2}{side1}" in tikz
+
+
+def test_the_diagram_scale_reaches_every_pic():
+    """Spacing layers for one scale and drawing them at another lines up nothing."""
+    diagram = sp.Diagram(name="big", scale=sp.Scale(value=0.4)).add(
+        sp.Conv(name="c"), sp.Sum(name="s")
+    )
+    assert diagram_to_tikz(diagram).count("scale=0.4") == 2
+
+
+def test_an_annotation_points_at_its_layer_and_labels_the_far_end():
+    diagram = sp.Diagram(name="loss").add(sp.Conv(name="loss"))
+    diagram.annotate("loss", "$p$", offset=sp.Offset(y=0.25), reach=sp.Offset(x=-4))
+    line = annotation_to_tikz(diagram.annotations[0])
+    # The label hugs the arrow, above it and running back along it.
+    assert "node[anchor=south west] {$p$}" in line
+    assert line.endswith("([shift={(0,0.25,0)}] loss-west);")
+
+
+def test_an_annotation_can_point_away_from_its_layer():
+    diagram = sp.Diagram(name="loss").add(sp.Conv(name="loss"))
+    diagram.annotate(
+        "loss",
+        "$g$",
+        offset=sp.Offset(y=-0.25),
+        reach=sp.Offset(x=-4),
+        inward=False,
+    )
+    line = annotation_to_tikz(diagram.annotations[0])
+    assert line.startswith("\\draw [syAnnotation] ([shift={(0,-0.25,0)}] loss-west) --")
+    # Below the axis, so the label goes below the arrow rather than over it.
+    assert line.endswith("++(-4,0,0) node[anchor=north west] {$g$};")
+
+
+def test_annotating_a_layer_that_is_not_there_is_refused():
+    with pytest.raises(KeyError, match="no layer named 'nobody'"):
+        sp.Diagram(name="loss").add(sp.Conv(name="loss")).annotate("nobody", "$p$")
+
+
+def test_a_legend_names_each_kind_of_layer_once():
+    diagram = (
+        sp.Diagram(name="key")
+        .add(sp.Conv(name="c1"), sp.Conv(name="c2"), sp.Pool(name="p"))
+        .add_legend()
+    )
+    assert [entry.label for entry in diagram.legend_entries()] == [
+        "Convolution",
+        "Pooling",
+    ]
+    assert "\\syLegendItem{\\syColorConv}{0.4}{Convolution}" in diagram_to_tikz(diagram)
+
+
+def test_a_legend_leaves_out_a_layer_that_names_no_kind_of_thing():
+    """A block carries its own text, so a key repeating it says nothing."""
+    diagram = sp.Diagram(name="key").add(sp.Block(name="b", text="b")).add_legend()
+    assert diagram.legend_entries() == []
+    assert "syLegend" not in diagram_to_tikz(diagram)
+
+
+def test_a_legend_is_pinned_clear_of_the_corner_it_names():
+    diagram = (
+        sp.Diagram(name="key").add(sp.Conv(name="c")).add_legend(position="north west")
+    )
+    assert "\\syLegend{north west}{south west}{1}" in diagram_to_tikz(diagram)
+
+
+def test_a_legend_can_be_written_out_by_hand():
+    diagram = sp.Diagram(name="key").add(sp.Conv(name="c"))
+    diagram.legend = sp.Legend(entries=[sp.LegendEntry(label="mine", fill="teal")])
+    assert "\\syLegendItem{{teal}}{0.7}{mine}" in diagram_to_tikz(diagram)
+
+
+def test_every_color_in_the_theme_is_drawn_by_some_layer():
+    """A color nothing draws with is a layer that was never written.
+
+    Four of them sat unused for years upstream, which is how a fully connected
+    layer and a normalization layer turned out to be missing.
+    """
+    drawn = {cls.role for cls in layer_types().values()}
+    drawn |= {
+        cls.band_role
+        for cls in layer_types().values()
+        if issubclass(cls, sp.layers.BandedBox)
+    }
+    named = set(sp.Theme.model_fields) - {"name", "edge"}
+    assert named <= drawn
 
 
 def test_the_document_carries_its_own_styles():

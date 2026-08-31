@@ -108,8 +108,10 @@ class Connection(BaseModel):
     bend
         Which way an elbow arrow turns. Only an elbow arrow uses it.
     clearance
-        How far a bypass arrow steps out before running past. Only a bypass
-        arrow uses it.
+        How far a bypass arrow steps out before running past. ``None`` works it
+        out: an arrow stepping along the depth axis steps exactly into the lane
+        its target sits in, so that the run to the target is level. Only a
+        bypass arrow uses it.
 
     Examples
     --------
@@ -126,7 +128,140 @@ class Connection(BaseModel):
     target_anchor: Anchor | None = None
     height: float = 1.25
     bend: Bend = Bend.ACROSS_THEN_DOWN
-    clearance: float = 1.5
+    clearance: float | None = None
+
+
+class Annotation(BaseModel):
+    r"""A labelled arrow drawn beside one layer.
+
+    A connection runs between two layers. An annotation runs between a layer
+    and a point in the space around it, which is how a drawing names what goes
+    into a layer or comes out of it without drawing the layer that supplies it.
+
+    Parameters
+    ----------
+    layer
+        Name of the layer the arrow touches.
+    text
+        The label. Read as LaTeX, so ``$\frac{\partial L}{\partial p}$``
+        renders as math.
+    anchor
+        Which point on the layer the arrow touches.
+    offset
+        Shift applied to that anchor, in TikZ units. Use it to run two arrows
+        into the same face, one above the other.
+    reach
+        How far the far end of the arrow sits from the near end, in TikZ units.
+        The label goes at the far end, on the side the arrow came from.
+    inward
+        Whether the arrow points at the layer or away from it.
+
+    Examples
+    --------
+    >>> Annotation(layer="loss", text="$p$", reach=Offset(x=-4)).inward
+    True
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    layer: str
+    text: str
+    anchor: Anchor = Anchor.WEST
+    offset: Offset = Offset()
+    reach: Offset = Offset()
+    inward: bool = True
+
+
+class LegendEntry(BaseModel):
+    """One row of a legend: a color and what it stands for.
+
+    Parameters
+    ----------
+    label
+        What the color stands for. Read as LaTeX.
+    role
+        Which color of the theme to draw, such as ``'pool'``.
+    fill
+        Color to draw instead, overriding the theme.
+    opacity
+        How opaque the swatch is, so that it matches the layers it describes.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    label: str
+    role: str = "conv"
+    fill: str | None = None
+    opacity: float = Field(default=0.7, ge=0, le=1)
+
+
+class Corner(str, Enum):
+    """Which corner of a drawing something sits in.
+
+    The members are TikZ node anchors, so they name the corner of the legend
+    that is pinned as well as the corner of the drawing it is pinned to.
+    """
+
+    NORTH_EAST = "north east"
+    NORTH_WEST = "north west"
+    SOUTH_EAST = "south east"
+    SOUTH_WEST = "south west"
+
+    @property
+    def outside(self) -> tuple[str, int]:
+        """Return where a key pinned to this corner goes.
+
+        A key sits just clear of the drawing rather than over it, so that a
+        corner holding part of the diagram is not covered. Pinning the
+        opposite corner of the key, above or below, is what puts it there.
+
+        Returns
+        -------
+        tuple of (str, int)
+            The corner of the key to pin, and which way it clears the drawing:
+            -1 for below, 1 for above.
+
+        Examples
+        --------
+        >>> Corner.SOUTH_EAST.outside
+        ('north east', -1)
+        """
+        if "south" in self.value:
+            return self.value.replace("south", "north"), -1
+        return self.value.replace("north", "south"), 1
+
+
+class Legend(BaseModel):
+    """A key drawn in a corner of the diagram.
+
+    Parameters
+    ----------
+    position
+        Which corner to draw it in.
+    entries
+        The rows to draw. Leave it empty to get one row for each kind of layer
+        the diagram draws, in drawing order, named and colored as that layer
+        is.
+    """
+
+    position: Corner = Corner.SOUTH_EAST
+    entries: list[LegendEntry] = Field(default_factory=list)
+
+
+def _distance(name: str, offset: float | str, axis: str) -> float:
+    """Return an offset as a number, or say why it is not one.
+
+    Raises
+    ------
+    ValueError
+        If the offset is a TikZ expression, whose value only the drawing knows.
+    """
+    if isinstance(offset, int | float):
+        return float(offset)
+    raise ValueError(
+        f"{name!r} is offset along {axis} by a TikZ expression, so where it sits "
+        f"is not known here; give that offset as a number"
+    )
 
 
 class Diagram(BaseModel):
@@ -159,6 +294,10 @@ class Diagram(BaseModel):
         Ignored when ``gap`` is set.
     connections
         Arrows between layers.
+    annotations
+        Labelled arrows drawn beside a layer.
+    legend
+        A key naming the kinds of layer the diagram draws. ``None`` draws none.
 
     Examples
     --------
@@ -195,6 +334,8 @@ class Diagram(BaseModel):
     # and everything else a specific layer adds.
     layers: list[SerializeAsAny[Layer]] = Field(default_factory=list)
     connections: list[Connection] = Field(default_factory=list)
+    annotations: list[Annotation] = Field(default_factory=list)
+    legend: Legend | None = None
 
     @field_validator("layers")
     @classmethod
@@ -269,6 +410,81 @@ class Diagram(BaseModel):
         )
         return self
 
+    def annotate(self, layer: str, text: str, **kwargs: object) -> Diagram:
+        r"""Draw a labelled arrow beside a layer.
+
+        Parameters
+        ----------
+        layer
+            Name of the layer to annotate. It must already be in the diagram.
+        text
+            The label, read as LaTeX.
+        **kwargs
+            Further fields for :class:`Annotation`, such as ``reach``.
+
+        Returns
+        -------
+        Diagram
+            This diagram, so calls can be chained.
+
+        Raises
+        ------
+        KeyError
+            If the name is not a layer in this diagram.
+        """
+        if layer not in self:
+            raise KeyError(f"no layer named {layer!r} in this diagram")
+        self.annotations.append(Annotation(layer=layer, text=text, **kwargs))
+        return self
+
+    def add_legend(self, **kwargs: object) -> Diagram:
+        """Draw a key naming the kinds of layer in the diagram.
+
+        Parameters
+        ----------
+        **kwargs
+            Fields for :class:`Legend`, such as ``position``. With none, the
+            key lists every kind of layer the diagram draws, in a corner.
+
+        Returns
+        -------
+        Diagram
+            This diagram, so calls can be chained.
+        """
+        self.legend = Legend(**kwargs)
+        return self
+
+    def legend_entries(self) -> list[LegendEntry]:
+        """Return the rows the legend draws.
+
+        A legend that lists its own rows keeps them. One that does not gets a
+        row for each kind of layer the diagram draws, in drawing order. A layer
+        that names no kind of thing, such as an input image or a block that
+        carries its own text, is left out.
+
+        Returns
+        -------
+        list of LegendEntry
+            The rows, or an empty list when the diagram has no legend.
+        """
+        if self.legend is None:
+            return []
+        if self.legend.entries:
+            return self.legend.entries
+        rows: dict[str, LegendEntry] = {}
+        for layer in self.layers:
+            if layer.title:
+                rows.setdefault(
+                    layer.title,
+                    LegendEntry(
+                        label=layer.title,
+                        role=layer.role,
+                        fill=layer.fill,
+                        opacity=layer.legend_opacity,
+                    ),
+                )
+        return list(rows.values())
+
     def __contains__(self, name: object) -> bool:
         """Return whether a layer of that name is in the diagram."""
         return any(layer.name == name for layer in self.layers)
@@ -310,26 +526,28 @@ class Diagram(BaseModel):
             yield layer, attach
             previous = layer
 
-    def axis_heights(self) -> dict[str, float]:
-        """Return the height each layer is drawn at, in TikZ units.
+    def axes(self) -> dict[str, tuple[float, float]]:
+        """Return the height and the depth each layer's axis sits at.
 
         A layer sits centered on its own axis. Chaining leaves that axis where
-        it was, and attaching to the north or south face of another layer moves
-        it by half that layer's height. Layers that come out at the same height
-        form a row, which is what the writer needs to know to give each row of
-        a drawing its own line of captions.
+        it was, and attaching to a face of another layer moves it by half that
+        layer's height or depth. Layers whose axes coincide form a row, which
+        is what the writer needs to know to give each row of a drawing its own
+        line of captions. Depth counts as well as height, because TikZ draws
+        the depth axis diagonally, so a layer set towards the reader is drawn
+        lower on the page than the row it was chained from.
 
         Returns
         -------
-        dict of str to float
-            Each layer name, and the height of its axis measured from the first
-            layer's.
+        dict of str to tuple of (float, float)
+            Each layer name, and how far its axis sits above and in front of
+            the first layer's, in TikZ units.
 
         Raises
         ------
         ValueError
             If a layer is attached to one that has not been placed yet, or is
-            offset vertically by a TikZ expression rather than a number.
+            offset by a TikZ expression rather than a number.
 
         Examples
         --------
@@ -339,31 +557,31 @@ class Diagram(BaseModel):
         ...     Conv(name="conv1"),
         ...     Pool(name="below", to=Attach(layer="conv1", anchor=Anchor.SOUTH)),
         ... )
-        >>> diagram.axis_heights()
-        {'conv1': 0.0, 'below': -4.0}
+        >>> diagram.axes()
+        {'conv1': (0.0, 0.0), 'below': (-4.0, 0.0)}
         """
         scale = self.scale.value
-        heights: dict[str, float] = {}
+        axes: dict[str, tuple[float, float]] = {}
         for layer, attach in self.placements():
             if attach is None:
-                heights[layer.name] = 0.0
+                axes[layer.name] = (0.0, 0.0)
                 continue
-            if attach.layer not in heights:
+            if attach.layer not in axes:
                 raise ValueError(
                     f"{layer.name!r} is attached to {attach.layer!r}, which comes "
                     f"later in the diagram; attach it to a layer already added"
                 )
-            rise = attach.offset.y
-            if not isinstance(rise, int | float):
-                raise ValueError(
-                    f"{layer.name!r} is offset by a TikZ expression, so how high "
-                    f"it sits is not known here; give its y offset as a number"
-                )
-            face = self[attach.layer].half_height(scale)
-            heights[layer.name] = (
-                heights[attach.layer] + attach.anchor.rise * face + rise
+            face = self[attach.layer]
+            height, depth = axes[attach.layer]
+            axes[layer.name] = (
+                height
+                + attach.anchor.rise * face.half_height(scale)
+                + _distance(layer.name, attach.offset.y, "y"),
+                depth
+                + attach.anchor.dive * face.depth_extent(scale) / 2
+                + _distance(layer.name, attach.offset.z, "z"),
             )
-        return heights
+        return axes
 
     def _step(self, before: Layer, after: Layer) -> Attach:
         r"""Return where a layer goes when it follows another along the flow.

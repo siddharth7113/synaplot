@@ -61,6 +61,12 @@ class Layer(BaseModel, ABC):
     ----------
     pic : str
         Name of the TikZ pic this class draws with, such as ``'Box'``.
+    role : str
+        Which color of the theme this layer is filled with.
+    title : str
+        What this kind of layer is called, for a legend to name it. A layer
+        that stands for no one kind of thing, such as an input image or a block
+        that carries its own text, leaves it empty and is left out of a legend.
     flat : bool
         Whether the layer is drawn flat on the page, with its anchors on the
         outline. An arrow into a flat layer ends in an arrowhead at the anchor.
@@ -70,6 +76,8 @@ class Layer(BaseModel, ABC):
     """
 
     pic: ClassVar[str] = ""
+    role: ClassVar[str] = "conv"
+    title: ClassVar[str] = ""
     flat: ClassVar[bool] = False
 
     name: str
@@ -81,6 +89,18 @@ class Layer(BaseModel, ABC):
     def anchors(self) -> frozenset[Anchor]:
         """Return the anchors this layer defines."""
         return frozenset(Anchor)
+
+    @property
+    def legend_opacity(self) -> float:
+        """Return the opacity a legend draws this layer's swatch with.
+
+        Returns
+        -------
+        float
+            The layer's own opacity, so that the swatch looks like the layer.
+            A layer that sets none, such as an input image, is drawn solid.
+        """
+        return float(getattr(self, "opacity", 1.0))
 
     def half_height(self, scale: float) -> float:
         """Return half the drawn height of this layer.
@@ -168,11 +188,7 @@ class Layer(BaseModel, ABC):
             The layer's own colour, or the macro holding the theme's colour for
             that role.
         """
-        if self.fill is not None:
-            # A colour expression holds commas and semicolons, which would end
-            # the option early, so it is braced. A macro name needs no braces.
-            return "{" + self.fill + "}"
-        return f"\\{color_macro(role)}"
+        return tikz_colour(self.fill, role)
 
     def to_tikz(self, context: DrawContext) -> str:
         r"""Return the TikZ that draws this layer.
@@ -187,8 +203,42 @@ class Layer(BaseModel, ABC):
         str
             One TikZ ``\pic`` statement.
         """
-        options = {"name": self.name, **self.pic_options(context)}
+        options = {
+            "name": self.name,
+            "scale": str(context.scale),
+            **self.pic_options(context),
+        }
         return draw_pic(self.pic, options, context.attach)
+
+
+def tikz_colour(fill: str | None, role: str) -> str:
+    r"""Return a colour ready to put in a TikZ option.
+
+    Parameters
+    ----------
+    fill
+        A TikZ colour expression, or ``None`` to take the theme's colour.
+    role
+        The field on the theme to read, such as ``'pool'``.
+
+    Returns
+    -------
+    str
+        The colour expression, braced, or the macro holding the theme's colour.
+
+    Examples
+    --------
+    A colour expression holds commas and semicolons, which would end the option
+    early, so it is braced. A macro name needs no braces.
+
+    >>> tikz_colour("rgb:blue,5;green,15", "pool")
+    '{rgb:blue,5;green,15}'
+    >>> tikz_colour(None, "pool")
+    '\\syColorPool'
+    """
+    if fill is None:
+        return f"\\{color_macro(role)}"
+    return "{" + fill + "}"
 
 
 def draw_pic(
