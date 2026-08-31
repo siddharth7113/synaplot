@@ -78,7 +78,9 @@ def test_writing_latex_needs_no_external_program(tmp_path: Path):
 def test_a_missing_converter_says_what_to_install(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(Converter, "available", classmethod(lambda cls: False))
     with pytest.raises(ToolchainError) as error:
-        render(tiny(), tmp_path / "out.svg")
+        # Naming the renderer skips the search for an installed engine, so the
+        # test reaches the converter check on a machine with no LaTeX.
+        render(tiny(), tmp_path / "out.svg", renderer=Tectonic)
     message = str(error.value)
     assert "convert a PDF to svg" in message
     assert "dvisvgm" in message and "pdftocairo" in message
