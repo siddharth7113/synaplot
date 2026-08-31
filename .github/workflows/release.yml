@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  # Lets you push a build to TestPyPI without cutting a real release.
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to publish
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Build the wheel and sdist
+        run: uv build
+
+      # A release tag that disagrees with the version in pyproject.toml would
+      # publish under a version nobody expects, and PyPI does not allow
+      # reuploading a version. Fail here instead.
+      - name: Check the tag against the package version
+        if: github.event_name == 'release'
+        run: |
+          version=$(uv run --no-project --with hatchling python -c \
+            "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match version $version in pyproject.toml"
+            exit 1
+          fi
+          echo "Publishing version $version"
+
+      - name: Check the metadata
+        run: uv run --no-project --with twine twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+
+  testpypi:
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/synaplot
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: Publish to PyPI
+    if: github.event_name == 'release' || inputs.target == 'pypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/synaplot
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      # Uses trusted publishing, so there is no API token to store. Configure
+      # the publisher at https://pypi.org/manage/account/publishing/ with this
+      # repository, workflow file release.yml, and environment pypi.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  attach:
+    name: Attach distributions to the release
+    if: github.event_name == 'release'
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY"
