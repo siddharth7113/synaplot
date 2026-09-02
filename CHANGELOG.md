@@ -26,7 +26,12 @@ PlotNeuralNet do not work with synaplot.
   through dvisvgm or pdftocairo. The installed program with the lowest priority
   is used. Subclass `Renderer` or `Converter` to add another.
 - `synaplot render` and `synaplot doctor`. `doctor` reports which programs are
-  installed, which formats work, and how to install what is missing.
+  installed, which formats work, and how to install what is missing. It tries
+  each LaTeX engine it finds on a one-layer diagram, so `found` means the
+  engine works: one that is installed but lacks a package is reported as
+  broken, with the line LaTeX complained on.
+- `synaplot render --renderer pdflatex` compiles with a named engine rather
+  than the most preferred one installed.
 - `Layer` and `DrawContext` are importable from `synaplot`, so a layer of your
   own starts from `sp.Layer`.
 - `escape`, for text that did not come from you.

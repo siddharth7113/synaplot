@@ -6,6 +6,7 @@ import json
 import platform
 import runpy
 import sys
+import tempfile
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -14,7 +15,15 @@ import yaml
 
 from synaplot import __version__, spec
 from synaplot.core.diagram import Diagram
-from synaplot.render import Format, ToolchainError, converters, renderers, toolchain
+from synaplot.layers import Conv
+from synaplot.render import (
+    Format,
+    Renderer,
+    ToolchainError,
+    converters,
+    renderers,
+    toolchain,
+)
 
 app = typer.Typer(
     name="synaplot",
@@ -78,6 +87,19 @@ def _load(source: Path) -> Diagram:
     return found.get("diagram") or next(iter(found.values()))
 
 
+def _renderer(name: str | None) -> type[Renderer] | None:
+    """Return the renderer of that name, or ``None`` to let rendering choose."""
+    if name is None:
+        return None
+    known = renderers(installed_only=False)
+    for cls in known:
+        if cls.name == name:
+            return cls
+    _fail(
+        f"no renderer named {name!r}; choose one of {', '.join(c.name for c in known)}"
+    )
+
+
 @app.command()
 def render(
     source: Annotated[
@@ -89,6 +111,13 @@ def render(
         typer.Option("--output", "-o", help="Where to write the diagram."),
     ],
     dpi: Annotated[int, typer.Option(help="Resolution for PNG output.")] = 300,
+    renderer: Annotated[
+        str | None,
+        typer.Option(
+            help="Compile with this program rather than the most preferred "
+            "installed one; 'synaplot doctor' lists them."
+        ),
+    ] = None,
 ) -> None:
     """Draw a diagram and write it to a file.
 
@@ -97,33 +126,60 @@ def render(
     """
     diagram = _load(source)
     try:
-        written = diagram.save(output, dpi=dpi)
+        written = diagram.save(output, dpi=dpi, renderer=_renderer(renderer))
     except (ToolchainError, ValueError) as error:
         _fail(str(error))
     typer.secho(f"wrote {written}", fg=typer.colors.GREEN)
 
 
+def _probe(renderer: type[Renderer]) -> str | None:
+    """Compile a one-layer diagram and return what went wrong, if anything.
+
+    A program on the PATH can still lack a package every diagram needs, and
+    then reporting it as found would send the reader off to look elsewhere.
+    LaTeX marks the line that explains a failure with ``!``.
+    """
+    diagram = Diagram(name="probe").add(Conv(name="probe"))
+    with tempfile.TemporaryDirectory(prefix="synaplot-") as directory:
+        try:
+            diagram.save(Path(directory) / "probe.pdf", renderer=renderer)
+        except ToolchainError as error:
+            lines = str(error).splitlines()
+            return next((line for line in lines if line.startswith("!")), lines[-1])
+    return None
+
+
 @app.command()
 def doctor() -> None:
-    """Report which rendering programs are installed.
+    """Report which rendering programs are installed and work.
 
     Run this first when a diagram will not render. Every program synaplot can
-    use is listed, along with how to install the missing ones.
+    use is listed, each LaTeX engine that is installed is tried on a one-layer
+    diagram, and each missing program comes with the command that installs it.
     """
     typer.echo(f"synaplot {__version__} on {platform.system()} {platform.machine()}")
     typer.echo(f"python {platform.python_version()}\n")
 
     width = max(len(cls.name) for cls, _ in toolchain())
+    working: list[type[Renderer]] = []
     for cls, found in toolchain():
-        mark, color = (
-            ("found", typer.colors.GREEN) if found else ("-", typer.colors.YELLOW)
-        )
+        problem = _probe(cls) if found and issubclass(cls, Renderer) else None
+        if not found:
+            mark, color = "-", typer.colors.YELLOW
+            note = f"to install, {cls.install_hint()}"
+        elif problem:
+            mark, color = "broken", typer.colors.RED
+            note = f"cannot compile a diagram: {problem}"
+        else:
+            mark, color, note = "found", typer.colors.GREEN, ""
+            if issubclass(cls, Renderer):
+                working.append(cls)
         typer.echo(f"  {cls.name:<{width}}  ", nl=False)
         typer.secho(f"{mark:<7}", fg=color, nl=False)
-        typer.echo("" if found else f" to install, {cls.install_hint()}")
+        typer.echo(f" {note}".rstrip())
 
     typer.echo("")
-    can_compile = bool(renderers())
+    can_compile = bool(working)
     for fmt in Format:
         if fmt is Format.TEX:
             ready = True
@@ -137,7 +193,7 @@ def doctor() -> None:
 
     if not can_compile:
         typer.secho(
-            "\nNo LaTeX engine was found, so only .tex output works. "
+            "\nNo working LaTeX engine was found, so only .tex output works. "
             "Installing tectonic is the shortest route: it needs no TeX "
             "installation and downloads what a document asks for.",
             fg=typer.colors.YELLOW,

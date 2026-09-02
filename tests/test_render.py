@@ -10,11 +10,13 @@ import pytest
 from typer.testing import CliRunner
 
 import synaplot as sp
+from synaplot import cli
 from synaplot.cli import app
 from synaplot.render import (
     Converter,
     Format,
     Renderer,
+    Tool,
     ToolchainError,
     converters,
     render,
@@ -97,13 +99,69 @@ def test_a_missing_renderer_says_what_to_install(monkeypatch, tmp_path: Path):
     assert "tectonic" in str(error.value)
 
 
-def test_doctor_lists_tools_and_formats():
+def test_doctor_lists_tools_and_formats(monkeypatch):
+    # Trying each engine on a document is slow, and is tested on its own below.
+    monkeypatch.setattr(cli, "_probe", lambda renderer: None)
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 0
     for name in ("tectonic", "dvisvgm", "pdftocairo"):
         assert name in result.stdout
     for fmt in ("tex", "pdf", "svg", "png"):
         assert fmt in result.stdout
+
+
+def test_doctor_reports_an_engine_that_is_installed_but_cannot_compile(monkeypatch):
+    """A program on the PATH can still lack a package every diagram needs."""
+    monkeypatch.setattr(Tool, "available", classmethod(lambda cls: True))
+    monkeypatch.setattr(
+        cli, "_probe", lambda renderer: "! LaTeX Error: File `luatex85.sty' not found."
+    )
+    result = runner.invoke(app, ["doctor"])
+    assert result.exit_code == 0
+    assert "broken" in result.stdout
+    assert "luatex85.sty" in result.stdout
+    # An engine that cannot compile does not make a format available.
+    assert "pdf  no" in result.stdout
+
+
+def test_doctor_counts_an_engine_that_compiles(monkeypatch):
+    monkeypatch.setattr(Tool, "available", classmethod(lambda cls: True))
+    monkeypatch.setattr(cli, "_probe", lambda renderer: None)
+    result = runner.invoke(app, ["doctor"])
+    assert "broken" not in result.stdout
+    assert "pdf  yes" in result.stdout
+    assert "svg  yes" in result.stdout
+
+
+def test_the_cli_refuses_a_renderer_it_does_not_know(tmp_path: Path):
+    source = tmp_path / "arch.yaml"
+    source.write_text("layers: [{kind: conv, name: c}]", encoding="utf-8")
+    result = runner.invoke(
+        app, ["render", str(source), "-o", str(tmp_path / "x.pdf"), "--renderer", "x"]
+    )
+    assert result.exit_code == 1
+    assert "no renderer named 'x'" in result.stderr
+    assert "tectonic" in result.stderr
+
+
+def test_the_cli_compiles_with_the_renderer_it_is_told_to(monkeypatch, tmp_path: Path):
+    """Naming a renderer skips the search, so a missing one is reported by name."""
+    monkeypatch.setattr(Tool, "path", classmethod(lambda cls: None))
+    source = tmp_path / "arch.yaml"
+    source.write_text("layers: [{kind: conv, name: c}]", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "render",
+            str(source),
+            "-o",
+            str(tmp_path / "x.pdf"),
+            "--renderer",
+            "pdflatex",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "pdflatex is not installed" in result.stderr
 
 
 def test_the_cli_writes_latex(tmp_path: Path):

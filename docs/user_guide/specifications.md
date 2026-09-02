@@ -36,11 +36,14 @@ synaplot render arch.yaml -o arch.svg
 ```
 
 `render` also accepts a `.py` file that leaves a `Diagram` in a module-level
-variable. If the file builds several, name the one to draw `diagram`.
+variable. If the file builds several, name the one to draw `diagram`. Add
+`--renderer pdflatex` to compile with a named engine rather than the most
+preferred one installed.
 
 - `synaplot doctor` lists every rendering program synaplot can use, marks the
-  ones it found, says which output formats work, and gives the install command
-  for the rest. Run it first when a diagram will not render.
+  ones it found, tries each LaTeX engine on a one-layer diagram, says which
+  output formats work, and gives the install command for the rest. Run it
+  first when a diagram will not render.
 - `synaplot convert arch.py -o arch.yaml` writes a diagram out as a
   specification. Use it to turn Python into YAML, or YAML into JSON.
 - `synaplot schema` prints the JSON Schema.

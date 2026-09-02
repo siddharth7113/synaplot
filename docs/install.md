@@ -17,11 +17,15 @@ synaplot doctor
 ```
 
 It lists every program synaplot can use, marks the ones it found, says which
-formats work, and gives the install command for the rest.
+formats work, and gives the install command for the rest. Each LaTeX engine it
+finds is tried on a one-layer diagram, so `found` means the engine works: a
+program on the PATH can still lack a package every diagram needs, and `doctor`
+prints the line LaTeX complained on rather than leaving you to find it.
 
 ## LaTeX engines
 
-synaplot uses the first of these it finds.
+synaplot uses the first of these it finds. To compile with another one, name
+it: `synaplot render arch.yaml -o arch.pdf --renderer pdflatex`.
 
 | Program | Notes |
 | --- | --- |
