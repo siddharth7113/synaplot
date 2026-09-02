@@ -66,6 +66,15 @@ PlotNeuralNet do not work with synaplot.
   of layer the diagram draws and the color it is drawn in. It sits just clear
   of the corner it names, so it covers nothing. List the entries yourself to
   say something else.
+- `from_torch` draws a PyTorch model. It runs the model once on a sample
+  input and draws what happened: each module as a layer sized and labelled
+  by the tensor it produced, an addition or a concatenation between modules
+  as the ball a residual path rejoins at, and an arrow from each layer to
+  what it fed. `depth` says how far into the module tree to draw, and
+  `image` draws a picture as the input layer and runs the model on it.
+  Modules become layers through `synaplot.pytorch.layer_for`, a
+  single-dispatch function, so a module of your own takes one decorator.
+  torch is an extra: `pip install synaplot[torch]`.
 - `Diagram.group` draws a frame around some layers, with a label beside it,
   which is how a figure marks the block a network repeats. The frame fits the
   layers it names and the arrows between them, so a residual path stays

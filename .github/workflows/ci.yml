@@ -46,6 +46,19 @@ jobs:
       - name: Run tests
         run: uv run pytest --cov --cov-report=term-missing
 
+  # Drawing a PyTorch model needs torch, which is too large for every cell of
+  # the matrix, so it is tested once, from the CPU wheel index.
+  torch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --group dev --extra torch
+      - name: Run the tests, the torch ones included
+        run: uv run pytest
+
   # Rendering needs a LaTeX toolchain, so it runs on one platform only. Tectonic
   # downloads the LaTeX packages it needs on first use, so its cache is worth
   # keeping between runs.

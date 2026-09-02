@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-torch = ["torch>=2.0"]
+torch = ["torch>=2.0", "pillow>=9.0"]
 
 [project.urls]
 Homepage = "https://github.com/siddharth7113/synaplot"
@@ -70,6 +70,17 @@ docs = [
     "sphinx-copybutton>=0.5",
     "sphinx-design>=0.6",
 ]
+
+# Drawing a picture of a model needs no GPU, so a development install takes
+# the CPU build of torch rather than the several gigabytes of the default one.
+# This only affects installs made with uv from this checkout.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/synaplot"]
@@ -108,7 +119,7 @@ ignore = [
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D100", "D103", "D104"]
+"tests/*" = ["D100", "D102", "D103", "D104"]
 "docs/*" = ["D100", "D103"]
 
 [tool.mypy]
@@ -118,9 +129,12 @@ strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
 
+# torch is optional, so it is treated as untyped whether or not it is
+# installed; the check then says the same thing on every machine and in CI.
 [[tool.mypy.overrides]]
 module = ["torch.*", "yaml.*"]
 ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 # Docstring examples are run as tests, so they cannot drift from the code.
