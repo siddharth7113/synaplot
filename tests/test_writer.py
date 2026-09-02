@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 
 import synaplot as sp
+from synaplot.core.theme import color_macro
 from synaplot.latex.writer import (
-    DEFAULT_CLEARANCE,
     annotation_to_tikz,
     connection_to_tikz,
     diagram_to_tikz,
@@ -229,7 +229,23 @@ def test_a_bypass_with_no_lane_to_find_steps_out_a_set_distance():
     )
     diagram.connect("a", "b", style="bypass", source_anchor="east")
     arrow = connection_to_tikz(diagram.connections[0], 0.0, diagram)
-    assert f"-- ++({DEFAULT_CLEARANCE:g},0,0)" in arrow
+    assert "-- ++(1.5,0,0)" in arrow
+
+
+def test_a_bypass_can_leave_from_any_anchor_that_names_a_side():
+    """An edge or a 3-D corner steps out to the side it names, like a corner."""
+    diagram = sp.Diagram(name="edges").add(sp.Conv(name="a"), sp.Conv(name="b"))
+    diagram.connect("a", "b", style="bypass", source_anchor="nearwest", clearance=1)
+    arrow = connection_to_tikz(diagram.connections[0], 0.0, diagram)
+    assert "(a-nearwest) -- ++(-1,0,0)" in arrow
+    assert "(b-west)" in arrow
+
+
+def test_a_bypass_cannot_leave_from_the_centre_of_a_layer():
+    diagram = sp.Diagram(name="centre").add(sp.Conv(name="a"), sp.Conv(name="b"))
+    diagram.connect("a", "b", style="bypass", source_anchor="anchor")
+    with pytest.raises(ValueError, match="cannot leave from the centre of 'a'"):
+        connection_to_tikz(diagram.connections[0], 0.0, diagram)
 
 
 def test_a_layer_set_towards_the_reader_gets_a_caption_line_of_its_own():
@@ -453,6 +469,17 @@ def test_naming_a_layer_that_is_not_in_the_diagram_is_refused():
 def test_styles_keep_their_macros_private():
     assert "\\sy@" in style_source()
     assert "caption/.store      in=\\caption" not in style_source()
+
+
+def test_every_theme_color_a_style_reads_is_one_the_theme_defines():
+    """A style names a theme macro directly, and only the theme can define it."""
+    read = set(re.findall(r"\\syColor(\w+)", style_source()))
+    defined = {
+        color_macro(field).removeprefix("syColor")
+        for field in sp.Theme.model_fields
+        if field != "name"
+    }
+    assert read and read <= defined
 
 
 @pytest.mark.render

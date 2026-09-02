@@ -91,6 +91,54 @@ class Anchor(str, Enum):
             return 1
         return -1 if "far" in self.value else 0
 
+    @property
+    def run(self) -> int:
+        """Return whether this anchor is on the east face, the west, or neither.
+
+        Returns
+        -------
+        int
+            1 on the east face, -1 on the west, 0 in between. With :attr:`rise`
+            and :attr:`dive` this places an anchor on all three axes.
+
+        Examples
+        --------
+        >>> Anchor.NORTHEAST.run, Anchor.FARWEST.run, Anchor.NORTH.run
+        (1, -1, 0)
+        """
+        if "east" in self.value:
+            return 1
+        return -1 if "west" in self.value else 0
+
+    @property
+    def side(self) -> Anchor | None:
+        """Return the face an arrow leaving this anchor steps out through.
+
+        A face is its own side. A corner or an edge steps out through the side
+        it names, east or west before north or south before near or far, so
+        that an arrow leaving a corner runs parallel to one leaving the face
+        beside it rather than back down the line the other came in on. The
+        centre of a layer faces no way at all.
+
+        Returns
+        -------
+        Anchor or None
+            One of the six faces, or ``None`` for the centre.
+
+        Examples
+        --------
+        >>> Anchor.NORTHEAST.side, Anchor.NEAR.side, Anchor.ANCHOR.side
+        (<Anchor.EAST: 'east'>, <Anchor.NEAR: 'near'>, None)
+        """
+        for sign, faces in (
+            (self.run, (Anchor.EAST, Anchor.WEST)),
+            (self.rise, (Anchor.NORTH, Anchor.SOUTH)),
+            (self.dive, (Anchor.NEAR, Anchor.FAR)),
+        ):
+            if sign:
+                return faces[0] if sign > 0 else faces[1]
+        return None
+
     @classmethod
     def ball_anchors(cls) -> frozenset[Anchor]:
         """Return the anchors that a ball defines.

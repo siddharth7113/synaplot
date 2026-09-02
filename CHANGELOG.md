@@ -75,6 +75,12 @@ PlotNeuralNet do not work with synaplot.
 
 - `Layer.fill_color` and `tikz_color` are spelled as TikZ spells them. They
   were `fill_colour` and `tikz_colour`, beside a `Color` alias.
+- A bypass can leave from any anchor that names a side, an edge such as
+  `nearwest` included, and steps out to that side. Leaving from the centre of
+  a layer, which faces no way, is refused.
+- The arrow styles, and the TikZ libraries every drawing needs, are in
+  `synaplot-connections.sty` beside the other styles. The Python wrote them
+  into each document.
 - An input image works. It was drawn as a plain TikZ node, while every other
   layer is addressed as `name-anchor`, so chaining a layer after an image or
   drawing an arrow from one failed to compile. The image is also copied in

@@ -70,12 +70,23 @@ class Flow(str, Enum):
     RIGHT = "right"
     UP = "up"
 
+    @property
+    def faces(self) -> tuple[Anchor, Anchor]:
+        """Return the faces a forward arrow runs between along this flow.
 
-#: Which faces a forward arrow runs between, per flow direction.
-FORWARD_FACES = {
-    Flow.RIGHT: (Anchor.EAST, Anchor.WEST),
-    Flow.UP: (Anchor.NORTH, Anchor.SOUTH),
-}
+        Returns
+        -------
+        tuple of (Anchor, Anchor)
+            The face the arrow leaves from and the face it arrives at.
+
+        Examples
+        --------
+        >>> Flow.UP.faces
+        (<Anchor.NORTH: 'north'>, <Anchor.SOUTH: 'south'>)
+        """
+        if self is Flow.UP:
+            return Anchor.NORTH, Anchor.SOUTH
+        return Anchor.EAST, Anchor.WEST
 
 
 class Bend(str, Enum):

@@ -7,40 +7,12 @@ from importlib.resources import files
 from typing import TYPE_CHECKING
 
 from synaplot.core.base import DrawContext, Layer, tikz_color
-from synaplot.core.diagram import FORWARD_FACES, Bend, ConnectionStyle, Flow
+from synaplot.core.diagram import Bend, ConnectionStyle, Flow
 from synaplot.core.geometry import Anchor, number
-from synaplot.core.theme import color_macro
 
 if TYPE_CHECKING:
     from synaplot.core.diagram import Annotation, Connection, Diagram
     from synaplot.core.geometry import Offset
-
-# Libraries the drawing needs: quotes for the labels along a box edge, 3d for
-# the plane an input image is drawn on, arrows.meta for the arrowheads, and
-# positioning for the anchors. The background layer holds the lines a fully
-# connected layer draws, so they pass behind the circles they join instead of
-# across them.
-TIKZ_SETUP = r"""
-\usetikzlibrary{quotes,arrows.meta,positioning,3d}
-\pgfdeclarelayer{syBackground}
-\pgfsetlayers{syBackground,main}
-""".strip()
-
-# Definitions the connections rely on: \syArrow draws the arrowhead placed
-# partway along a line, and syConnection is the line style itself. EDGE is a
-# placeholder that preamble() swaps for the theme's edge color.
-ARROW_STYLES = r"""
-\newcommand{\syArrow}{%
-    \tikz \draw[-Stealth,line width=0.8mm,draw=EDGE] (-0.3,0) -- ++(0.3,0);}
-\tikzset{
-    syConnection/.style={
-        ultra thick, draw=EDGE, opacity=0.7,
-        every node/.style={sloped,allow upside down}},
-    syEdge/.style={draw=EDGE, opacity=0.35, line width=0.2mm},
-    syAnnotation/.style={ultra thick, draw=EDGE, opacity=0.7},
-    syHead/.style={-{Stealth[length=3.5mm,width=3mm]}},
-}
-""".strip()
 
 
 @lru_cache(maxsize=1)
@@ -56,8 +28,8 @@ def style_source() -> str:
     -------
     str
         The contents of every style file, one after another. Adding a style to
-        the styles directory is enough to include it; the files define
-        independent pics, so they are read in name order for a stable result.
+        the styles directory is enough to include it; the files do not depend
+        on one another, so they are read in name order for a stable result.
     """
     styles = files("synaplot.latex") / "styles"
     sources = sorted(
@@ -86,13 +58,9 @@ def preamble(diagram: Diagram) -> str:
     Returns
     -------
     str
-        TikZ library imports, the style definitions, the theme colors, and the
-        arrow styles used by connections.
+        The theme's colors, then the style definitions that draw with them.
     """
-    arrows = ARROW_STYLES.replace("EDGE", f"\\{color_macro('edge')}")
-    return "\n\n".join(
-        [TIKZ_SETUP, style_source(), diagram.theme.macro_definitions(), arrows]
-    )
+    return "\n\n".join([diagram.theme.macro_definitions(), style_source()])
 
 
 def connection_to_tikz(
@@ -126,7 +94,7 @@ def connection_to_tikz(
         # A forward arrow runs between the faces the flow points at, so a
         # diagram that stacks upward needs no anchors written on every arrow.
         flow = diagram.flow if diagram is not None else Flow.RIGHT
-        leaves, arrives = FORWARD_FACES[flow]
+        leaves, arrives = flow.faces
         start = (connection.source_anchor or leaves).value
         end = (connection.target_anchor or arrives).value
         return f"\\draw [{line}] ({source}-{start}) --{head} ({target}-{end});"
@@ -180,67 +148,42 @@ def _arrowhead(connection: Connection, diagram: Diagram | None) -> tuple[str, st
     return "syConnection", f" node{placement} {{\\syArrow}}"
 
 
-#: Which way a bypass steps out, per anchor it leaves from.
-_STEP_OUT = {
-    Anchor.EAST: (1, 0, 0),
-    Anchor.WEST: (-1, 0, 0),
-    Anchor.NORTH: (0, 1, 0),
-    Anchor.SOUTH: (0, -1, 0),
-    # Stepping out along the depth axis moves the arrow towards the reader or
-    # away from them, which is where a drawing of feature maps has room. It is
-    # how several arrows leaving one line reach a row of layers of their own.
-    Anchor.NEAR: (0, 0, 1),
-    Anchor.FAR: (0, 0, -1),
-    # A corner steps out to the side it names. Two residual arrows can then
-    # leave the same layer, one from the corner and one from the side, without
-    # the second running back down the line the first came in on.
-    Anchor.NORTHEAST: (1, 0, 0),
-    Anchor.SOUTHEAST: (1, 0, 0),
-    Anchor.NORTHWEST: (-1, 0, 0),
-    Anchor.SOUTHWEST: (-1, 0, 0),
-}
-
-#: How far a bypass steps out when nothing says and nothing can be worked out.
-DEFAULT_CLEARANCE = 1.5
-
-#: Which face a bypass comes back in on, per direction it stepped out in.
-_SIDE = {
-    (1, 0, 0): Anchor.EAST,
-    (-1, 0, 0): Anchor.WEST,
-    (0, 1, 0): Anchor.NORTH,
-    (0, -1, 0): Anchor.SOUTH,
-    (0, 0, 1): Anchor.NEAR,
-    (0, 0, -1): Anchor.FAR,
-}
-
-
 def _bypass(
     connection: Connection, line: str, head: str, diagram: Diagram | None
 ) -> str:
     """Return an arrow that steps aside, runs past, and comes back in.
 
+    The arrow steps out through the side its anchor names, which for a corner
+    or an edge is east or west. Two residual arrows can then leave the same
+    layer, one from a corner and one from a face, without the second running
+    back down the line the first came in on. Stepping out along the depth
+    axis, from ``near`` or ``far``, moves the arrow towards the reader or away
+    from them, which is where a drawing of feature maps has room, and is how
+    several arrows leaving one line reach a row of layers of their own.
+
     Raises
     ------
     ValueError
-        If the arrow leaves from an anchor with no clear direction to step out
-        in, such as the centre of the layer.
+        If the arrow leaves from the centre of the layer, which faces no way.
     """
     start = connection.source_anchor or Anchor.EAST
-    if start not in _STEP_OUT:
-        sides = ", ".join(anchor.value for anchor in _STEP_OUT)
-        raise ValueError(f"a bypass must leave from one of {sides}, not {start.value}")
-    across, up, out = _STEP_OUT[start]
+    side = start.side
+    if side is None:
+        raise ValueError(
+            f"a bypass cannot leave from the centre of {connection.source!r}; "
+            f"give source_anchor a face or a corner"
+        )
     # An arrow that left from a corner comes back in on the side that corner
     # names, because the corner only says where to leave from.
-    end = connection.target_anchor or _SIDE[across, up, out]
-    clearance = _clearance(connection, start, out, diagram)
-    step = ",".join(number(way * clearance) for way in (across, up, out))
+    end = connection.target_anchor or side
+    clearance = _clearance(connection, start, side.dive, diagram)
+    step = ",".join(number(way * clearance) for way in (side.run, side.rise, side.dive))
     # Having stepped sideways, come back on the other axis first, so the arrow
     # meets the target square on rather than at a slant. An arrow that stepped
     # along the depth axis runs straight to the target instead: a square turn
     # is a turn on the page, and depth is drawn across the page as well as
     # down it.
-    corner = "--" if out else "|-" if across else "-|"
+    corner = "--" if side.dive else "|-" if side.run else "-|"
     return (
         f"\\draw [{line}] ({connection.source}-{start.value}) -- ++({step})\n"
         f"    {corner}{head} ({connection.target}-{end.value});"
@@ -261,7 +204,8 @@ def _clearance(
     if connection.clearance is not None:
         return connection.clearance
     if not out or diagram is None:
-        return DEFAULT_CLEARANCE
+        # Enough to clear the outline of the layer it left and read as a step.
+        return 1.5
     depths = diagram.axes()
     scale = diagram.scale
     leaves = depths[connection.source][1] + start.dive * (
@@ -398,11 +342,12 @@ def _label_anchor(annotation: Annotation) -> str:
     """
     across = _page(annotation.reach.x, annotation.reach.z)
     if _sign(annotation.offset.y):
-        corner = (_SIDE_Y.get(-_sign(annotation.offset.y), ""), _SIDE_X.get(across, ""))
+        up, side = -_sign(annotation.offset.y), across
     else:
-        up = _page(annotation.reach.y, annotation.reach.z)
-        corner = (_SIDE_Y.get(-up, ""), _SIDE_X.get(-across, ""))
-    return " ".join(part for part in corner if part) or "center"
+        up, side = -_page(annotation.reach.y, annotation.reach.z), -across
+    vertical = {1: "north", -1: "south"}.get(up, "")
+    horizontal = {1: "east", -1: "west"}.get(side, "")
+    return " ".join(part for part in (vertical, horizontal) if part) or "center"
 
 
 def _page(along: float | str, out: float | str) -> int:
@@ -414,11 +359,6 @@ def _page(along: float | str, out: float | str) -> int:
     choose which side of an arrow its label sits on.
     """
     return _sign(along) or -_sign(out)
-
-
-#: The direction each sign points in, along each axis.
-_SIDE_X = {1: "east", -1: "west"}
-_SIDE_Y = {1: "north", -1: "south"}
 
 
 def _sign(value: float | str) -> int:

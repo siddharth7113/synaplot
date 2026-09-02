@@ -1,0 +1,39 @@
+\ProvidesPackage{synaplot-connections}[2026/09/02 synaplot connection styles]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The lines drawn between layers, and what every pic in this package needs
+% loaded before it can draw.
+%
+% New in synaplot. PlotNeuralNet wrote its arrow styles into each document
+% from Python. Keeping them beside the pics means a document reads one set of
+% styles, and the writer adds only the theme's colors.
+%
+% Every macro is prefixed \sy so that loading this file changes nothing in the
+% document around it.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% quotes for the labels along the edges of a box, 3d for the plane an input
+% image stands on, and arrows.meta for the arrowheads.
+\usetikzlibrary{quotes,arrows.meta,3d}
+
+% The lines of a fully connected layer are drawn on this layer, so that they
+% pass behind the units they join rather than across them.
+\pgfdeclarelayer{syBackground}
+\pgfsetlayers{syBackground,main}
+
+% \syColorEdge is defined by the theme, which the writer puts into the
+% preamble beside these styles. TikZ reads a style when it is used, not when
+% it is defined, so it does not matter which comes first.
+%
+% \syArrow is the arrowhead placed partway along a line. An arrow into a
+% volume cannot end in a head, because the anchor it reaches sits inside the
+% shape, where a head would be hidden.
+\newcommand{\syArrow}{%
+    \tikz \draw[-Stealth,line width=0.8mm,draw=\syColorEdge] (-0.3,0) -- ++(0.3,0);}
+\tikzset{
+    syConnection/.style={
+        ultra thick, draw=\syColorEdge, opacity=0.7,
+        every node/.style={sloped,allow upside down}},
+    syEdge/.style={draw=\syColorEdge, opacity=0.35, line width=0.2mm},
+    syAnnotation/.style={ultra thick, draw=\syColorEdge, opacity=0.7},
+    syHead/.style={-{Stealth[length=3.5mm,width=3mm]}},
+}
