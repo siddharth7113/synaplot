@@ -27,6 +27,8 @@ PlotNeuralNet do not work with synaplot.
   is used. Subclass `Renderer` or `Converter` to add another.
 - `synaplot render` and `synaplot doctor`. `doctor` reports which programs are
   installed, which formats work, and how to install what is missing.
+- `Layer` and `DrawContext` are importable from `synaplot`, so a layer of your
+  own starts from `sp.Layer`.
 - `escape`, for text that did not come from you.
 - A diagram can be written as YAML or JSON and read back. `synaplot render`
   accepts a `.yaml` or `.json` file as well as a `.py` one.

@@ -5,9 +5,10 @@ synaplot turns that into TikZ code and renders it to SVG, PNG, PDF, or LaTeX
 source.
 
 Start with :class:`Diagram`, add layers from this namespace, and call
-:meth:`Diagram.to_tex`.
+:meth:`Diagram.to_tex`. Subclass :class:`Layer` to draw something new.
 """
 
+from synaplot.core.base import DrawContext, Layer
 from synaplot.core.diagram import (
     Annotation,
     Connection,
@@ -52,8 +53,10 @@ __all__ = [
     "Deconv",
     "Dense",
     "Diagram",
+    "DrawContext",
     "FullyConnected",
     "Input",
+    "Layer",
     "Legend",
     "LegendEntry",
     "Offset",

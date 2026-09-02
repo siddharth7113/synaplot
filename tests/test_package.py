@@ -19,6 +19,14 @@ def test_version_is_readable():
     assert synaplot.__version__
 
 
+def test_the_base_classes_are_exported():
+    """A layer of your own subclasses Layer and draws with a DrawContext."""
+    from synaplot.core.base import DrawContext, Layer
+
+    assert synaplot.Layer is Layer
+    assert synaplot.DrawContext is DrawContext
+
+
 def test_style_files_ship_with_the_package():
     found = style_files()
     assert found, "no styles were packaged, so no diagram can be drawn"

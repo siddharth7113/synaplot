@@ -12,7 +12,7 @@ TikZ pic draws it and with what options:
 ```python
 from typing import ClassVar, Literal
 
-from synaplot.core.base import DrawContext, Layer
+from synaplot import DrawContext, Layer
 
 
 class Bottleneck(Layer):
