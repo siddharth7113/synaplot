@@ -16,7 +16,7 @@ PlotNeuralNet do not work with synaplot.
   not say where it goes is placed after the one before it.
 - `Conv`, `ConvRelu`, `Deconv`, `Pool`, `Unpool`, `FullyConnected`,
   `BatchNorm`, `Softmax`, `Sum`, `Concat`, and `Input`. PlotNeuralNet defined
-  colours for a fully connected layer, a deconvolution and a normalization
+  colors for a fully connected layer, a deconvolution and a normalization
   layer and then never drew any of them.
 - `Diagram.to_tex` writes a document that carries its own styles, so it
   compiles from any directory and pastes into Overleaf as is.
@@ -50,13 +50,13 @@ PlotNeuralNet do not work with synaplot.
   unit of the next. `elbow` turns one right angle, for a branch leaving the
   main line. `bypass` steps out to one side, runs past whatever is in the way,
   and comes back in, which is the shape of a residual connection.
-- A `fill` on any layer, overriding the colour the theme would give it.
+- A `fill` on any layer, overriding the color the theme would give it.
 - `Diagram.annotate` draws a labelled arrow beside a layer, between it and a
   point in the space around it, for saying what reaches a layer and what leaves
   it without drawing the layer that supplies it. The label hugs the arrow, so
   two arrows into one face read as two.
 - `Diagram.add_legend` draws a key in a corner of the drawing, naming each kind
-  of layer the diagram draws and the colour it is drawn in. It sits just clear
+  of layer the diagram draws and the color it is drawn in. It sits just clear
   of the corner it names, so it covers nothing. List the entries yourself to
   say something else.
 - Documentation: a landing page, a quickstart, a gallery of every architecture
@@ -73,6 +73,8 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
+- `Layer.fill_color` and `tikz_color` are spelled as TikZ spells them. They
+  were `fill_colour` and `tikz_colour`, beside a `Color` alias.
 - An input image works. It was drawn as a plain TikZ node, while every other
   layer is addressed as `name-anchor`, so chaining a layer after an image or
   drawing an arrow from one failed to compile. The image is also copied in
@@ -89,11 +91,11 @@ PlotNeuralNet do not work with synaplot.
   of boxes came from `size.width` and the number of labels from `filters`, so a
   layer with four filter counts and one width drew a single box and dropped
   three labels.
-- The theme's band colours are `conv_band` and `fc_band`, not `conv_relu` and
-  `fc_relu`. They colour the band down the right of a layer, which stands for
+- The theme's band colors are `conv_band` and `fc_band`, not `conv_relu` and
+  `fc_relu`. They color the band down the right of a layer, which stands for
   the activation; the layer itself is filled with `conv` or `fc`. The old names
-  described a kind of layer while colouring part of one.
-- A transposed convolution has a colour of its own. It shared one with
+  described a kind of layer while coloring part of one.
+- A transposed convolution has a color of its own. It shared one with
   upsampling, so a drawing could not tell the two apart.
 - `Diagram.scale` is a number. It was a model wrapping one number, so setting
   it read `Diagram(scale=Scale(value=0.4))`.

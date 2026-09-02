@@ -30,7 +30,7 @@ class Bottleneck(Layer):
 
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         return {
-            "fill": self.fill_colour(context, self.role),
+            "fill": self.fill_color(context, self.role),
             "height": "12",
             "width": "1",
             "depth": "12",

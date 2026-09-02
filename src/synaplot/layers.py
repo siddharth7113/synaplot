@@ -45,7 +45,7 @@ class BoxLayer(Layer):
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options common to every box layer."""
         return {
-            "fill": self.fill_colour(context, self.role),
+            "fill": self.fill_color(context, self.role),
             "opacity": str(self.opacity),
             "height": str(self.size.height),
             "width": self.size.width_to_tikz(),
@@ -281,7 +281,7 @@ class Ball(Layer):
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this sphere."""
         return {
-            "fill": self.fill_colour(context, self.role),
+            "fill": self.fill_color(context, self.role),
             "opacity": str(self.opacity),
             "radius": str(self.radius),
             "logo": self.symbol,
@@ -451,7 +451,7 @@ class Dense(Layer):
             "count": str(self.nodes),
             "radius": str(self.radius),
             "spacing": str(self.spacing),
-            "fill": self.fill_colour(context, self.role),
+            "fill": self.fill_color(context, self.role),
             "opacity": str(self.opacity),
         }
         if self.break_after is not None:
@@ -508,7 +508,7 @@ class Operator(Layer):
     def pic_options(self, context: DrawContext) -> dict[str, str]:
         """Return the TikZ options for this operator."""
         return {
-            "fill": self.fill_colour(context, self.role),
+            "fill": self.fill_color(context, self.role),
             "opacity": str(self.opacity),
             "radius": str(self.radius),
             "symbol": self.symbol,
@@ -561,7 +561,7 @@ class Block(Layer):
             "width": str(self.width),
             "height": str(self.height),
             "corner": str(self.corner),
-            "fill": self.fill_colour(context, self.role),
+            "fill": self.fill_color(context, self.role),
             "opacity": str(self.opacity),
         }
 

@@ -6,7 +6,7 @@ from functools import lru_cache
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
-from synaplot.core.base import DrawContext, Layer, tikz_colour
+from synaplot.core.base import DrawContext, Layer, tikz_color
 from synaplot.core.diagram import FORWARD_FACES, Bend, ConnectionStyle, Flow
 from synaplot.core.geometry import Anchor, number
 from synaplot.core.theme import color_macro
@@ -446,7 +446,7 @@ def legend_to_tikz(diagram: Diagram) -> str:
     if diagram.legend is None or not entries:
         return ""
     rows = "\n".join(
-        f"    \\syLegendItem{{{tikz_colour(entry.fill, entry.role)}}}"
+        f"    \\syLegendItem{{{tikz_color(entry.fill, entry.role)}}}"
         f"{{{entry.opacity}}}{{{entry.label}}}"
         for entry in entries
     )

@@ -55,7 +55,7 @@ class Layer(BaseModel, ABC):
         Text drawn under the layer. Read as LaTeX, so ``$3\times3$`` renders as
         math. Pass text you did not write through :func:`synaplot.escape` first.
     fill
-        Colour to fill this layer with, overriding the theme. A TikZ colour
+        Color to fill this layer with, overriding the theme. A TikZ color
         expression, such as ``"teal"`` or ``"rgb:blue,5;green,15"``.
 
     Attributes
@@ -203,7 +203,7 @@ class Layer(BaseModel, ABC):
             key is added by :meth:`to_tikz`.
         """
 
-    def fill_colour(self, context: DrawContext, role: str) -> str:
+    def fill_color(self, context: DrawContext, role: str) -> str:
         """Return the fill for this layer, ready to put in a TikZ option.
 
         Parameters
@@ -217,10 +217,10 @@ class Layer(BaseModel, ABC):
         Returns
         -------
         str
-            The layer's own colour, or the macro holding the theme's colour for
+            The layer's own color, or the macro holding the theme's color for
             that role.
         """
-        return tikz_colour(self.fill, role)
+        return tikz_color(self.fill, role)
 
     def to_tikz(self, context: DrawContext) -> str:
         r"""Return the TikZ that draws this layer.
@@ -243,29 +243,29 @@ class Layer(BaseModel, ABC):
         return draw_pic(self.pic, options, context.attach)
 
 
-def tikz_colour(fill: str | None, role: str) -> str:
-    r"""Return a colour ready to put in a TikZ option.
+def tikz_color(fill: str | None, role: str) -> str:
+    r"""Return a color ready to put in a TikZ option.
 
     Parameters
     ----------
     fill
-        A TikZ colour expression, or ``None`` to take the theme's colour.
+        A TikZ color expression, or ``None`` to take the theme's color.
     role
         The field on the theme to read, such as ``'pool'``.
 
     Returns
     -------
     str
-        The colour expression, braced, or the macro holding the theme's colour.
+        The color expression, braced, or the macro holding the theme's color.
 
     Examples
     --------
-    A colour expression holds commas and semicolons, which would end the option
+    A color expression holds commas and semicolons, which would end the option
     early, so it is braced. A macro name needs no braces.
 
-    >>> tikz_colour("rgb:blue,5;green,15", "pool")
+    >>> tikz_color("rgb:blue,5;green,15", "pool")
     '{rgb:blue,5;green,15}'
-    >>> tikz_colour(None, "pool")
+    >>> tikz_color(None, "pool")
     '\\syColorPool'
     """
     if fill is None:
