@@ -8,7 +8,7 @@
 # Render with: synaplot render examples/transformer.yaml -o transformer.svg
 name: transformer
 flow: up
-margin: 0.6
+margin: 0.45
 layers:
   - {kind: block, name: embed, text: Input Embedding, fill: "rgb:blue,5;red,2.5;white,5"}
   - {kind: block, name: pos, text: Positional Encoding, fill: "rgb:blue,5;red,2.5;white,5"}
@@ -28,5 +28,5 @@ connections:
   - {source: feedforward, target: add2}
   - {source: add2, target: norm2}
   - {source: norm2, target: head}
-  - {source: pos, target: add1, style: bypass, clearance: 2}
-  - {source: norm1, target: add2, style: bypass, clearance: 2}
+  - {source: pos, target: add1, style: bypass, clearance: 1}
+  - {source: norm1, target: add2, style: bypass, clearance: 1}

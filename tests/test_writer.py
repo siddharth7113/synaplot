@@ -80,7 +80,7 @@ def test_a_diagram_that_flows_up_stacks_and_points_its_arrows_up():
     assert attach is not None
     assert attach.anchor is sp.Anchor.NORTH
     # Half of b's height, so the gap between the two is the margin.
-    assert attach.offset.y == 0.5 + 12 * 0.2 / 2
+    assert attach.offset.y == 0.5 + diagram["b"].height * 0.2 / 2
     assert "(a-north) -- (b-south)" in diagram_to_tikz(diagram)
 
 

@@ -429,7 +429,7 @@ class Dense(Layer):
     break_gap: float = 3.0
     radius: float = 1.6
     spacing: float = 5.0
-    opacity: float = Field(default=0.7, ge=0, le=1)
+    opacity: float = Field(default=0.45, ge=0, le=1)
 
     @property
     def anchors(self) -> frozenset[Anchor]:
@@ -493,8 +493,8 @@ class Operator(Layer):
     flat: ClassVar[bool] = True
 
     symbol: str = "$+$"
-    radius: float = 3.0
-    opacity: float = Field(default=0.7, ge=0, le=1)
+    radius: float = 2.5
+    opacity: float = Field(default=0.5, ge=0, le=1)
 
     @property
     def anchors(self) -> frozenset[Anchor]:
@@ -540,10 +540,10 @@ class Block(Layer):
     flat: ClassVar[bool] = True
 
     text: str = ""
-    width: float = 40.0
-    height: float = 12.0
-    corner: float = 3.0
-    opacity: float = Field(default=0.7, ge=0, le=1)
+    width: float = 26.0
+    height: float = 6.0
+    corner: float = 4.0
+    opacity: float = Field(default=0.4, ge=0, le=1)
 
     @property
     def anchors(self) -> frozenset[Anchor]:

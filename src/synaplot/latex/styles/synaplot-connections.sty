@@ -33,7 +33,9 @@
     syConnection/.style={
         ultra thick, draw=\syColorEdge, opacity=0.7,
         every node/.style={sloped,allow upside down}},
-    syEdge/.style={draw=\syColorEdge, opacity=0.35, line width=0.2mm},
+    syEdge/.style={draw=\syColorEdge, opacity=0.3, line width=0.1mm},
     syAnnotation/.style={ultra thick, draw=\syColorEdge, opacity=0.7},
-    syHead/.style={-{Stealth[length=3.5mm,width=3mm]}},
+    % An arrow into a flat shape ends at its outline, so it is drawn to the
+    % weight of that outline rather than to the weight of a box.
+    syHead/.style={-{Stealth[length=2.5mm,width=2mm]}, line width=0.8pt},
 }

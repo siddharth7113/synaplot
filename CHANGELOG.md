@@ -80,6 +80,13 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
+- Flat shapes are drawn the way a paper draws them. A block, a unit, and an
+  operator are filled as lightly as the 3-D boxes are and outlined in their
+  own fill darkened rather than in black; a block is sized to the text it
+  holds; an arrow into a flat shape is drawn to the weight of that outline;
+  and the mesh of a fully connected layer is finer. They read as slides
+  before, with saturated fills, heavy black rims, and blocks four times the
+  height of their text.
 - A layer's name is checked when the layer is made: letters, digits, `_` and
   `-`. A name goes into TikZ coordinates such as `conv1-east`, where a dot
   starts an anchor, so a name read from a model such as `layer1.0.conv1`

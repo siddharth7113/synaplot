@@ -11,6 +11,12 @@
 % These are new in synaplot. The 3D pics it inherited from PlotNeuralNet draw
 % feature maps as volumes, which suits a convolutional network and nothing else.
 %
+% Each shape is filled as lightly as those volumes are and outlined in its own
+% fill darkened rather than in black. A heavy black rim around a saturated
+% fill is what makes a drawing look like a slide. The fill is resolved with
+% \colorlet first, because a mixing expression such as rgb:yellow,5;red,2.5
+% cannot take a !55!black of its own.
+%
 % Every macro is prefixed \sy@ so that loading this package changes nothing in
 % the document around it.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -34,12 +40,13 @@
         % The column is centred on the axis, so a row of layers lines up
         % however many nodes each one has.
         \pgfmathsetmacro{\sy@nodetop}{((\sy@count-1)*\sy@nodestep+\sy@nodegap)/2}
+        \colorlet{sy@rim}{\sy@fill}
 
         \foreach \sy@n in {1,...,\sy@count} {
             \pgfmathsetmacro{\sy@nodey}{%
                 \sy@nodetop-(\sy@n-1)*\sy@nodestep
                 -(\sy@n>\sy@breakat ? \sy@nodegap : 0)}
-            \node[circle, draw, line width=0.3mm,
+            \node[circle, draw=sy@rim!55!black, line width=0.2mm,
                   fill=\sy@fill, fill opacity=\sy@opacity, text opacity=1,
                   minimum size=2*\sy@noderadius cm, inner sep=0pt]
                  (\sy@name-\sy@n) at (0,\sy@nodey) {};
@@ -84,7 +91,7 @@
     spacing=5,
     scale=0.2,
     fill={rgb:blue,5;red,2.5;white,5},
-    opacity=0.7,
+    opacity=0.45,
     break=,
     breakgap=3,
     name=,
@@ -95,8 +102,10 @@
 
         \pgfmathsetmacro{\sy@blockw}{\sy@width*\sy@scale}
         \pgfmathsetmacro{\sy@blockh}{\sy@height*\sy@scale}
+        \colorlet{sy@rim}{\sy@fill}
 
-        \node[rectangle, rounded corners=\sy@corner pt, draw, line width=0.3mm,
+        \node[rectangle, rounded corners=\sy@corner pt,
+              draw=sy@rim!55!black, line width=0.2mm,
               fill=\sy@fill, fill opacity=\sy@opacity, text opacity=1,
               minimum width=\sy@blockw cm, minimum height=\sy@blockh cm,
               align=center, inner sep=2pt]
@@ -123,13 +132,13 @@
     text/.store        in=\sy@text,
     corner/.store      in=\sy@corner,
     name/.store        in=\sy@name,
-    width=40,
-    height=12,
+    width=26,
+    height=6,
     scale=0.2,
     fill={rgb:yellow,5;red,2.5;white,5},
-    opacity=0.7,
+    opacity=0.4,
     text=,
-    corner=3,
+    corner=4,
     name=,
 }
 
@@ -137,8 +146,9 @@
     FlatOperator/.pic={\tikzset{/synaplot/flatoperator/.cd,#1}
 
         \pgfmathsetmacro{\sy@opradius}{\sy@radius*\sy@scale}
+        \colorlet{sy@rim}{\sy@fill}
 
-        \node[circle, draw, line width=0.3mm,
+        \node[circle, draw=sy@rim!55!black, line width=0.2mm,
               fill=\sy@fill, fill opacity=\sy@opacity,
               minimum size=2*\sy@opradius cm, inner sep=0pt]
              (\sy@name-node) at (0,0) {};
@@ -161,10 +171,10 @@
     opacity/.store     in=\sy@opacity,
     symbol/.store      in=\sy@symbol,
     name/.store        in=\sy@name,
-    radius=3,
+    radius=2.5,
     scale=0.2,
     fill={rgb:blue,5;green,15},
-    opacity=0.7,
+    opacity=0.5,
     symbol=$+$,
     name=,
 }

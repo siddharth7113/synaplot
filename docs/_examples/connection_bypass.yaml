@@ -2,7 +2,7 @@
 # in. This is the shape of a residual path around a sublayer.
 name: connection_bypass
 flow: up
-margin: 2
+margin: 1.2
 layers:
   - {kind: block, name: input, text: Input}
   - {kind: block, name: sublayer, text: Sublayer}
@@ -10,4 +10,4 @@ layers:
 connections:
   - {source: input, target: sublayer}
   - {source: sublayer, target: add}
-  - {source: input, target: add, style: bypass, source_anchor: east, clearance: 6}
+  - {source: input, target: add, style: bypass, source_anchor: east, clearance: 1.5}
