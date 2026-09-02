@@ -447,6 +447,14 @@ def test_an_image_is_listed_as_a_file_the_drawing_reads():
     assert [str(asset) for asset in diagram.assets()] == ["cats.jpg"]
 
 
+def test_a_name_tikz_cannot_use_is_refused():
+    """TikZ reads 'layer1.0-east' as 'layer1' at an anchor that does not exist."""
+    with pytest.raises(ValueError, match=r"'layer1\.0' cannot name a layer"):
+        sp.Conv(name="layer1.0")
+    for name in ("conv1", "layer1_0", "enc-1"):
+        assert sp.Conv(name=name).name == name
+
+
 def test_attaching_to_an_anchor_a_layer_does_not_define_is_refused():
     """LaTeX reports this as an unknown shape, deep inside its own log."""
     diagram = sp.Diagram(name="x").add(sp.Conv(name="c"), sp.Sum(name="add1"))

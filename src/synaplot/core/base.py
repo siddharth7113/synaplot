@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from synaplot.core.geometry import Anchor, Attach
 from synaplot.core.theme import Theme, color_macro
@@ -47,7 +48,7 @@ class Layer(BaseModel, ABC):
     name
         Identifies the layer. Connections refer to layers by name, and the name
         becomes part of the TikZ coordinates the layer defines, so it must be
-        unique within a diagram.
+        unique within a diagram and made of letters, digits, ``_`` and ``-``.
     to
         Where to place this layer. When it is ``None``, the diagram places the
         layer after the one before it.
@@ -88,6 +89,18 @@ class Layer(BaseModel, ABC):
     to: Attach | None = None
     caption: str = ""
     fill: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _reject_unsafe_names(cls, name: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            raise ValueError(
+                f"{name!r} cannot name a layer: the name goes into TikZ "
+                f"coordinates such as '{name}-east', where a dot starts an "
+                f"anchor and a comma or a space ends the name. Use letters, "
+                f"digits, '_' and '-'"
+            )
+        return name
 
     @property
     def anchors(self) -> frozenset[Anchor]:

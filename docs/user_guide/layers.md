@@ -2,7 +2,10 @@
 
 A layer is one drawn element. Every kind takes a `name` and an optional
 `caption`. The name must be unique in the diagram, because connections refer to
-layers by name.
+layers by name, and made of letters, digits, `_` and `-`, because it becomes
+part of a TikZ coordinate, where a dot starts an anchor. A name read from a
+model, such as `layer1.0.conv1`, needs its dots replaced before it names a
+layer; it can still be the caption, through {func}`synaplot.escape`.
 
 ## Sizes describe the drawing
 

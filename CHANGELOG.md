@@ -73,6 +73,10 @@ PlotNeuralNet do not work with synaplot.
 
 ### Changed
 
+- A layer's name is checked when the layer is made: letters, digits, `_` and
+  `-`. A name goes into TikZ coordinates such as `conv1-east`, where a dot
+  starts an anchor, so a name read from a model such as `layer1.0.conv1`
+  failed inside LaTeX rather than in Python.
 - `Layer.fill_color` and `tikz_color` are spelled as TikZ spells them. They
   were `fill_colour` and `tikz_colour`, beside a `Color` alias.
 - A bypass can leave from any anchor that names a side, an edge such as
