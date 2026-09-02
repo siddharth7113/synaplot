@@ -14,9 +14,6 @@ from synaplot.render.base import Converter, Format, Renderer, ToolchainError
 if TYPE_CHECKING:
     from pathlib import Path
 
-APT = "run: sudo apt install"
-BREW = "run: brew install"
-
 
 class Tectonic(Renderer):
     """Compiles with tectonic.
@@ -30,7 +27,7 @@ class Tectonic(Renderer):
     priority: ClassVar[int] = 0
     install_hints: ClassVar[dict[str, str]] = {
         "Linux": "run: curl -fsSL https://drop-sh.fullyjustified.net | sh",
-        "Darwin": f"{BREW} tectonic",
+        "Darwin": "run: brew install tectonic",
         "Windows": "run: winget install TectonicProject.Tectonic",
     }
 
@@ -53,8 +50,8 @@ class LatexEngine(Renderer):
 
     passes: ClassVar[int] = 2
     install_hints: ClassVar[dict[str, str]] = {
-        "Linux": f"{APT} texlive-latex-extra texlive-fonts-extra",
-        "Darwin": f"{BREW} --cask mactex",
+        "Linux": "run: sudo apt install texlive-latex-extra texlive-fonts-extra",
+        "Darwin": "run: brew install --cask mactex",
         "Windows": "install MiKTeX from https://miktex.org/download",
     }
 
@@ -106,8 +103,8 @@ class Dvisvgm(Converter):
     priority: ClassVar[int] = 0
     produces: ClassVar[frozenset[Format]] = frozenset({Format.SVG})
     install_hints: ClassVar[dict[str, str]] = {
-        "Linux": f"{APT} texlive-extra-utils",
-        "Darwin": f"{BREW} dvisvgm",
+        "Linux": "run: sudo apt install texlive-extra-utils",
+        "Darwin": "run: brew install dvisvgm",
         "Windows": "install MiKTeX from https://miktex.org/download",
     }
 
@@ -125,8 +122,8 @@ class Pdftocairo(Converter):
     priority: ClassVar[int] = 10
     produces: ClassVar[frozenset[Format]] = frozenset({Format.SVG, Format.PNG})
     install_hints: ClassVar[dict[str, str]] = {
-        "Linux": f"{APT} poppler-utils",
-        "Darwin": f"{BREW} poppler",
+        "Linux": "run: sudo apt install poppler-utils",
+        "Darwin": "run: brew install poppler",
         "Windows": "install poppler from https://github.com/oschwartz10612/poppler-windows",
     }
 
