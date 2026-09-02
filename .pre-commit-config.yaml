@@ -18,9 +18,14 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+  # The project's own mypy, from the lockfile, so that the hook checks with the
+  # version and the dependencies that CI does. A mirror pins its own mypy in an
+  # environment without typer, and disagreed with both.
+  - repo: local
     hooks:
       - id: mypy
+        name: mypy
+        entry: uv run mypy
+        language: system
         files: ^src/synaplot/
-        additional_dependencies: [pydantic>=2.7, types-pyyaml]
+        pass_filenames: false
