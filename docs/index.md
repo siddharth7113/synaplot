@@ -74,11 +74,9 @@ early, and the API can still change.
 :maxdepth: 1
 :hidden:
 
-install
-quickstart
+getting_started
 gallery
 user_guide/index
-from_plotneuralnet
-api/index
-credits
+API <api/index>
+about
 ```
