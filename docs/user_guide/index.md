@@ -25,7 +25,8 @@ custom_layers
   named point on another layer.
 - **[Connections](connections.md)**: the five arrow styles, and when each one
   is the right shape.
-- **[Annotations and legends](annotations.md)**: the text around a drawing.
+- **[Annotations, legends, and groups](annotations.md)**: the text around a
+  drawing, and frames around parts of it.
 - **[Themes](themes.md)**: colors.
 - **[Specifications](specifications.md)**: the file format, the command line,
   and the JSON Schema.

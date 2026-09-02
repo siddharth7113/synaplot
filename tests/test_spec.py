@@ -37,6 +37,8 @@ layers:
 connections:
   - {source: conv1, target: pool1}
   - {source: conv1, target: add1, style: skip}
+groups:
+  - {layers: [conv1, pool1], label: stage}
 """
 
 
@@ -73,6 +75,7 @@ def test_a_round_trip_keeps_every_field():
     again = spec.loads(spec.dumps(original))
     assert again["conv1"].filters == original["conv1"].filters
     assert again["conv1"].spatial == original["conv1"].spatial
+    assert again.groups == original.groups
     assert again.to_tikz() == original.to_tikz()
 
 

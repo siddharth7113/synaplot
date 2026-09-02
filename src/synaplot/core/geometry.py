@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -138,6 +139,45 @@ class Anchor(str, Enum):
             if sign:
                 return faces[0] if sign > 0 else faces[1]
         return None
+
+    @property
+    def opposite(self) -> Anchor:
+        """Return the anchor facing this one across the layer.
+
+        Examples
+        --------
+        >>> Anchor.NORTHEAST.opposite
+        <Anchor.SOUTHWEST: 'southwest'>
+        >>> Anchor.NEAR.opposite, Anchor.ANCHOR.opposite
+        (<Anchor.FAR: 'far'>, <Anchor.ANCHOR: 'anchor'>)
+        """
+        flipped = {
+            "north": "south",
+            "south": "north",
+            "east": "west",
+            "west": "east",
+            "near": "far",
+            "far": "near",
+        }
+        pattern = "|".join(flipped)
+        return Anchor(re.sub(pattern, lambda found: flipped[found.group()], self.value))
+
+    @property
+    def tikz(self) -> str:
+        """Return this anchor as TikZ names it on a node drawn flat on the page.
+
+        TikZ writes a corner as two words. Only an anchor on the page has a
+        TikZ name; ``near`` and ``far`` are synaplot's own.
+
+        Examples
+        --------
+        >>> Anchor.NORTHEAST.tikz, Anchor.WEST.tikz, Anchor.ANCHOR.tikz
+        ('north east', 'west', 'center')
+        """
+        if self is Anchor.ANCHOR:
+            return "center"
+        name: str = self.value
+        return name.replace("north", "north ").replace("south", "south ").strip()
 
     @classmethod
     def ball_anchors(cls) -> frozenset[Anchor]:

@@ -308,6 +308,40 @@ def test_annotating_a_layer_that_is_not_there_is_refused():
         sp.Diagram(name="loss").add(sp.Conv(name="loss")).annotate("nobody", "$p$")
 
 
+def test_a_group_frames_its_layers_and_the_arrows_between_them():
+    diagram = sp.Diagram(name="framed", flow="up").add(
+        sp.Block(name="a", text="a"),
+        sp.Block(name="b", text="b"),
+        sp.Operator(name="c"),
+    )
+    diagram.connect("a", "b")
+    diagram.connect("b", "c")
+    diagram.connect("a", "c", style="bypass", source_anchor="east")
+    diagram.group("b", "c", label="$2\\times$")
+    tikz = diagram_to_tikz(diagram)
+    # The frame fits the two layers and the arrow between them. The arrows
+    # from a, which is outside the frame, are left out of it.
+    assert "fit=(syExtent-b) (syExtent-c) (syArrowExtent2)" in tikz
+    assert "\\begin{scope}[local bounding box=syArrowExtent2]" in tikz
+    assert "syArrowExtent1" not in tikz
+    assert "syArrowExtent3" not in tikz
+    assert "\\node[syFrameLabel, anchor=east] at (syGroup1.west) {$2\\times$};" in tikz
+
+
+def test_a_frame_naming_a_layer_that_is_not_there_is_refused():
+    """A specification can name one; only building the diagram checks it."""
+    diagram = sp.Diagram(name="x").add(sp.Block(name="a", text="a"))
+    diagram.groups.append(sp.Group(layers=["a", "ghost"], label="k"))
+    with pytest.raises(ValueError, match="the frame 'k' holds 'ghost', which is not"):
+        diagram.to_tikz()
+
+
+def test_a_frame_label_sits_on_the_page():
+    """A frame is flat, so its label cannot sit along the depth axis."""
+    with pytest.raises(ValueError, match="not near"):
+        sp.Group(layers=["a"], label_anchor="near")
+
+
 def test_a_legend_names_each_kind_of_layer_once():
     diagram = (
         sp.Diagram(name="key")

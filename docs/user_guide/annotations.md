@@ -1,8 +1,9 @@
-# Annotations and legends
+# Annotations, legends, and groups
 
 A connection joins two layers. An annotation joins a layer to a point in the
 space around it. Use one to label what reaches a layer without drawing the
-layer that supplies it.
+layer that supplies it. A legend names the kinds of layer a drawing holds, and
+a group draws a frame around part of it.
 
 ## Annotations
 
@@ -71,3 +72,33 @@ diagram.legend = sp.Legend(
 
 A row takes its color from `role`, which names a field on the
 [theme](themes.md), or from `fill`, which overrides the theme.
+
+## Groups
+
+A group draws a frame around some layers, with a label beside it. This is how
+a figure marks the block a network repeats:
+
+```{synaplot-example} examples/transformer.yaml
+:alt: A transformer encoder with a dashed frame around the repeated block, labelled N times
+:nosource:
+```
+
+```yaml
+groups:
+  - {layers: [attention, add1, norm1, feedforward, add2, norm2], label: '$N\times$'}
+```
+
+In Python:
+
+```python
+diagram.group(
+    "attention", "add1", "norm1", "feedforward", "add2", "norm2", label=r"$N\times$"
+)
+```
+
+The frame fits the layers it names and every arrow that runs between two of
+them, so a residual path around a sublayer stays inside it. `padding` is the
+space between the frame and what it holds, in centimetres. `label_anchor` is
+the side the label sits against, outside the frame; `west` is the default,
+which is where a repeat count goes. Set `dashed: false` for a solid frame,
+which reads as a part of the network rather than a note about it.

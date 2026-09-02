@@ -121,7 +121,7 @@ out.
 Flat blocks stacked upward, with each residual path leaving the stack and
 added back in at a circle. `flow: up` places each layer above the last and
 points every forward arrow the same way, so no layer in the file says where it
-goes.
+goes. A dashed frame marks the block that repeats, and says how many times.
 
 ```{synaplot-example} examples/transformer.yaml
 :alt: A transformer encoder, flat blocks stacked upward with residual paths added back in at circles

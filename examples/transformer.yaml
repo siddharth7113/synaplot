@@ -3,7 +3,7 @@
 # `flow: up` stacks the blocks upward and points every forward arrow the same
 # way, so no layer says where it goes and no arrow says which faces to join.
 # Each residual path leaves the trunk below a sublayer, passes it, and is added
-# back in at the circle above it.
+# back in at the circle above it. The frame marks the block that repeats.
 #
 # Render with: synaplot render examples/transformer.yaml -o transformer.svg
 name: transformer
@@ -30,3 +30,5 @@ connections:
   - {source: norm2, target: head}
   - {source: pos, target: add1, style: bypass, clearance: 1}
   - {source: norm1, target: add2, style: bypass, clearance: 1}
+groups:
+  - {layers: [attention, add1, norm1, feedforward, add2, norm2], label: '$N\times$'}

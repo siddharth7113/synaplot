@@ -20,6 +20,6 @@ synaplot render examples/vgg16.yaml -o vgg16.svg
 | `hed.yaml` | HED | Side outputs fanned along the depth axis |
 | `softmax_loss.yaml` | Softmax loss | One layer, annotated with what goes in and comes out |
 | `mlp.yaml` | Fully connected network | Layers drawn as columns of units, joined unit to unit |
-| `transformer.yaml` | Transformer encoder | Flat blocks stacked upward, with each residual path added back in at a circle |
+| `transformer.yaml` | Transformer encoder | Flat blocks stacked upward, each residual path added back in at a circle, and a frame around the block that repeats |
 
 These were carried over from the examples that shipped with PlotNeuralNet.

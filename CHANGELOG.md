@@ -66,6 +66,10 @@ PlotNeuralNet do not work with synaplot.
   of layer the diagram draws and the color it is drawn in. It sits just clear
   of the corner it names, so it covers nothing. List the entries yourself to
   say something else.
+- `Diagram.group` draws a frame around some layers, with a label beside it,
+  which is how a figure marks the block a network repeats. The frame fits the
+  layers it names and the arrows between them, so a residual path stays
+  inside it.
 - Documentation: a landing page, a quickstart, a gallery of every architecture
   with the file that drew it, a user guide covering layers, anchors,
   connections, annotations, themes, specifications and writing a layer of your

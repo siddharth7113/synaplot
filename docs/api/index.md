@@ -15,6 +15,7 @@ Python and in a [specification](../user_guide/specifications.md) alike.
    Diagram
    Connection
    Annotation
+   Group
    Legend
    LegendEntry
    Theme

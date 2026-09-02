@@ -263,6 +263,56 @@ class Legend(BaseModel):
     entries: list[LegendEntry] = Field(default_factory=list)
 
 
+class Group(BaseModel):
+    r"""A frame drawn around some layers, with a label beside it.
+
+    This is how a figure marks the block a network repeats, with ``$N\times$``
+    beside it, or names the encoder half of a network.
+
+    Parameters
+    ----------
+    layers
+        Names of the layers inside the frame. An arrow that runs between two
+        of them is inside it too, so a residual path around a sublayer does
+        not poke out.
+    label
+        Text drawn beside the frame, outside it. Read as LaTeX.
+    label_anchor
+        Which side of the frame the label sits against. Default is the west,
+        which is where ``$N\times$`` goes.
+    padding
+        Space between the frame and what it holds, in centimetres.
+    dashed
+        Whether the frame is dashed. A solid one reads as a part of the
+        network rather than a note about it.
+
+    Examples
+    --------
+    >>> Group(layers=["attention", "norm1"], label="$6\\times$").label_anchor.value
+    'west'
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    layers: list[str] = Field(min_length=1)
+    label: str = ""
+    label_anchor: Anchor = Anchor.WEST
+    padding: float = Field(default=0.3, ge=0)
+    dashed: bool = True
+
+    @field_validator("label_anchor")
+    @classmethod
+    def _on_the_page(cls, anchor: Anchor) -> Anchor:
+        sides = Anchor.flat_anchors() - {Anchor.ANCHOR}
+        if anchor not in sides:
+            choices = ", ".join(sorted(side.value for side in sides))
+            raise ValueError(
+                f"a label sits beside the frame, at one of {choices}, "
+                f"not {anchor.value}"
+            )
+        return anchor
+
+
 def _distance(name: str, offset: float | str, axis: str) -> float:
     """Return an offset as a number, or say why it is not one.
 
@@ -311,6 +361,8 @@ class Diagram(BaseModel):
         Arrows between layers.
     annotations
         Labelled arrows drawn beside a layer.
+    groups
+        Frames drawn around sets of layers, each with a label beside it.
     legend
         A key naming the kinds of layer the diagram draws. ``None`` draws none.
 
@@ -348,6 +400,7 @@ class Diagram(BaseModel):
     layers: list[SerializeAsAny[Layer]] = Field(default_factory=list)
     connections: list[Connection] = Field(default_factory=list)
     annotations: list[Annotation] = Field(default_factory=list)
+    groups: list[Group] = Field(default_factory=list)
     legend: Legend | None = None
 
     @field_validator("layers")
@@ -448,6 +501,35 @@ class Diagram(BaseModel):
         if layer not in self:
             raise KeyError(f"no layer named {layer!r} in this diagram")
         self.annotations.append(Annotation(layer=layer, text=text, **kwargs))
+        return self
+
+    def group(self, *layers: str, label: str = "", **kwargs: object) -> Diagram:
+        r"""Draw a frame around some layers, with a label beside it.
+
+        Parameters
+        ----------
+        *layers
+            Names of the layers to frame. All must already be in the diagram.
+        label
+            Text drawn beside the frame, read as LaTeX. ``$N\times$`` is how a
+            figure marks a block that repeats.
+        **kwargs
+            Further fields for :class:`Group`, such as ``padding``.
+
+        Returns
+        -------
+        Diagram
+            This diagram, so calls can be chained.
+
+        Raises
+        ------
+        KeyError
+            If any name is not a layer in this diagram.
+        """
+        for name in layers:
+            if name not in self:
+                raise KeyError(f"no layer named {name!r} in this diagram")
+        self.groups.append(Group(layers=list(layers), label=label, **kwargs))
         return self
 
     def add_legend(self, **kwargs: object) -> Diagram:

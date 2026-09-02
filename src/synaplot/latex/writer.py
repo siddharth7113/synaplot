@@ -11,7 +11,7 @@ from synaplot.core.diagram import Bend, ConnectionStyle, Flow
 from synaplot.core.geometry import Anchor, number
 
 if TYPE_CHECKING:
-    from synaplot.core.diagram import Annotation, Connection, Diagram
+    from synaplot.core.diagram import Annotation, Connection, Diagram, Group
     from synaplot.core.geometry import Offset
 
 
@@ -395,6 +395,59 @@ def legend_to_tikz(diagram: Diagram) -> str:
     return f"\\syLegend{{{corner.value}}}{{{pinned}}}{{{step}}}{{%\n{rows}}}"
 
 
+def _inside(connection: Connection, framed: set[str]) -> bool:
+    """Return whether an arrow runs between framed layers and can reach past them.
+
+    A full connection stays between the units it joins, so its extent adds
+    nothing to a frame that already holds both ends.
+    """
+    ends = {connection.source, connection.target}
+    return connection.style is not ConnectionStyle.FULL and ends <= framed
+
+
+def group_to_tikz(group: Group, index: int, diagram: Diagram) -> str:
+    """Return the TikZ that draws one frame and its label.
+
+    The frame is a node fitted around the extents of the layers it holds and
+    of the arrows between them, drawn on the background layer so that it sits
+    behind what it frames. The label sits against one side of it, outside.
+
+    Parameters
+    ----------
+    group
+        The frame to draw.
+    index
+        Which frame this is, used to name it.
+    diagram
+        The diagram being drawn, for the arrows between the framed layers.
+
+    Returns
+    -------
+    str
+        The frame, and the label when there is one.
+    """
+    extents = [f"(syExtent-{name})" for name in group.layers] + [
+        f"(syArrowExtent{position})"
+        for position, connection in enumerate(diagram.connections, start=1)
+        if _inside(connection, set(group.layers))
+    ]
+    style = "syFrame,dashed" if group.dashed else "syFrame"
+    frame = f"syGroup{index}"
+    lines = [
+        "\\begin{pgfonlayer}{syBackground}",
+        f"    \\node[{style}, fit={' '.join(extents)}, "
+        f"inner sep={number(group.padding)}cm] ({frame}) {{}};",
+        "\\end{pgfonlayer}",
+    ]
+    if group.label:
+        side = group.label_anchor
+        lines.append(
+            f"\\node[syFrameLabel, anchor={side.opposite.tikz}] "
+            f"at ({frame}.{side.tikz}) {{{group.label}}};"
+        )
+    return "\n".join(lines)
+
+
 def check(diagram: Diagram) -> None:
     """Raise if the diagram names a layer or an anchor that is not there.
 
@@ -428,6 +481,10 @@ def check(diagram: Diagram) -> None:
             annotation.anchor,
             f"the label {annotation.text!r} points at",
         )
+    for group in diagram.groups:
+        holds = f"the frame {group.label!r} holds" if group.label else "a frame holds"
+        for name in group.layers:
+            _check(diagram, name, None, holds)
 
 
 def _check(diagram: Diagram, name: str, anchor: Anchor | None, use: str) -> None:
@@ -459,28 +516,42 @@ def diagram_to_tikz(diagram: Diagram) -> str:
     check(diagram)
     scale = diagram.scale
     rows = _caption_rows(diagram)
+    framed = {name for group in diagram.groups for name in group.layers}
     # A captioned row hangs its captions from the lowest point any of its layers
-    # reached, so those layers are drawn inside a scope that records it.
-    measured = {layer.name for row in rows for layer in row}
+    # reached, and a frame is fitted around what it holds, so those layers are
+    # drawn inside a scope that records their extent.
+    measured = {layer.name for row in rows for layer in row} | framed
     blocks = []
     for layer, attach in diagram.placements():
         drawing = layer.to_tikz(
             DrawContext(theme=diagram.theme, scale=scale, attach=attach)
         )
         if layer.name in measured:
-            drawing = (
-                f"\\begin{{scope}}[local bounding box=syExtent-{layer.name}]\n"
-                f"{drawing}\n\\end{{scope}}"
-            )
+            drawing = _measured(drawing, f"syExtent-{layer.name}")
         blocks.append(drawing)
     roof = max((layer.half_height(scale) for layer in diagram.layers), default=0.0)
-    blocks += [connection_to_tikz(c, roof, diagram) for c in diagram.connections]
+    for position, connection in enumerate(diagram.connections, start=1):
+        drawing = connection_to_tikz(connection, roof, diagram)
+        # An arrow between two framed layers is inside the frame, so its extent
+        # is recorded as well.
+        if _inside(connection, framed):
+            drawing = _measured(drawing, f"syArrowExtent{position}")
+        blocks.append(drawing)
     blocks += [annotation_to_tikz(a) for a in diagram.annotations]
     blocks += [_captions(row, index) for index, row in enumerate(rows, start=1)]
+    blocks += [
+        group_to_tikz(group, index, diagram)
+        for index, group in enumerate(diagram.groups, start=1)
+    ]
     # The legend is drawn last, so that it can be placed against the edge of
     # everything else the diagram drew.
     blocks += [block for block in [legend_to_tikz(diagram)] if block]
     return "\n\n".join(blocks)
+
+
+def _measured(drawing: str, name: str) -> str:
+    """Return a drawing inside a scope that records its extent as a node."""
+    return f"\\begin{{scope}}[local bounding box={name}]\n{drawing}\n\\end{{scope}}"
 
 
 def diagram_to_tex(diagram: Diagram, *, standalone: bool = True) -> str:

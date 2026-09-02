@@ -14,6 +14,7 @@ from synaplot.core.diagram import (
     Connection,
     ConnectionStyle,
     Diagram,
+    Group,
     Legend,
     LegendEntry,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "Diagram",
     "DrawContext",
     "FullyConnected",
+    "Group",
     "Input",
     "Layer",
     "Legend",

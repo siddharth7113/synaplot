@@ -79,6 +79,14 @@
         at (current bounding box.#1)
         {\begin{tabular}{@{}c@{\ }l@{}}#4\end{tabular}};}
 
+% A frame drawn around some layers, and the label beside it. The writer fits
+% the frame to the layers and draws it on the background layer, so it sits
+% behind what it holds; the label sits against one side of it, outside.
+\tikzset{
+    syFrame/.style={draw=black!60, line width=0.2mm, rounded corners=4pt},
+    syFrameLabel/.style={inner sep=3pt},
+}
+
 % \syFilterLabel{<left coordinate>}{<right coordinate>}{<box width in cm>}
 %
 % Writes \sy@xlabel under the bottom edge of one box. A label wider than the
